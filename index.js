@@ -5,7 +5,7 @@
   const SCRIPT = document.currentScript;
   const cfg = {
     site: SCRIPT?.dataset.site || "dev",
-    api: SCRIPT?.dataset.api || "localhost:8000",             
+    api: SCRIPT?.dataset.api || "https://staging-api.getmxpert.com/assistant/customer",             
     position: SCRIPT?.dataset.position || "bottom-right",
     theme: (SCRIPT?.dataset.theme || "light").toLowerCase(),
     primary: SCRIPT?.dataset.primary || "#3b82f6",
@@ -240,22 +240,16 @@
     const typingNode = addStatus("...", "typing");
 
     try {
-      const resp = await fetch(`https://${cfg.api}/chat/message`, {
+      const resp = await fetch(`https://${cfg.api}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          site: cfg.site,
-          message: userText,
-          pageUrl: window.location.href,
-          // you can extend here (userAgent, timestamp etc.)
+          content: userText,
         }),
       });
 
-      let data = {};
-      try {
-        data = await resp.json();
-      } catch (_) {
-        // non-JSON: hard fail
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}`);
       }
 
       // remove typing
@@ -263,11 +257,71 @@
         typingNode.parentNode.removeChild(typingNode);
       }
 
-      // show reply
-      const replyText =
-        (data && (data.reply || data.answer || data.message)) ||
-        "Thanks, we'll be in touch.";
-      addMessage(replyText, "bot");
+      // Handle streaming response
+      const reader = resp.body?.getReader();
+      const decoder = new TextDecoder();
+      let botMessage = "";
+      let messageEl = null;
+
+      if (!reader) {
+        throw new Error("No response body");
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        // Split by newlines since the endpoint writes line-delimited JSON
+        const lines = chunk.split("\n").filter(line => line.trim());
+
+        for (const line of lines) {
+          try {
+            const event = JSON.parse(line);
+
+            switch (event.type) {
+              case "delta":
+                // Stream text content
+                botMessage += event.content;
+                if (!messageEl) {
+                  messageEl = document.createElement("div");
+                  messageEl.className = "msg bot";
+                  msgsEl.appendChild(messageEl);
+                }
+                messageEl.textContent = botMessage;
+                scrollMsgsToBottom();
+                break;
+
+              case "error":
+                addMessage(`Error: ${event.content}`, "bot");
+                return;
+
+              case "done":
+                // Final message - update with complete content
+                if (event.messageContent) {
+                  botMessage = event.messageContent;
+                  if (!messageEl) {
+                    messageEl = document.createElement("div");
+                    messageEl.className = "msg bot";
+                    msgsEl.appendChild(messageEl);
+                  }
+                  messageEl.textContent = botMessage;
+                  scrollMsgsToBottom();
+                }
+                return;
+            }
+          } catch (_) {
+            // Skip invalid JSON lines
+          }
+        }
+      }
+
+      // Fallback if no done event received
+      if (botMessage) {
+        addMessage(botMessage, "bot");
+      } else {
+        addMessage("Thanks, we'll be in touch.", "bot");
+      }
     } catch (err) {
       if (typingNode && typingNode.parentNode) {
         typingNode.parentNode.removeChild(typingNode);
