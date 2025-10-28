@@ -241,6 +241,9 @@
 
     try {
       const url = cfg.api.startsWith("http") ? cfg.api : `https://${cfg.api}`;
+      console.log("[Chat] Sending message to endpoint:", url);
+      console.log("[Chat] Request body:", { content: userText });
+
       const resp = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -250,8 +253,12 @@
       });
 
       if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}`);
+        const errorMsg = `HTTP ${resp.status}`;
+        console.error("[Chat] HTTP Error:", errorMsg);
+        throw new Error(errorMsg);
       }
+
+      console.log("[Chat] Response received, status:", resp.status);
 
       // remove typing
       if (typingNode && typingNode.parentNode) {
@@ -265,12 +272,18 @@
       let messageEl = null;
 
       if (!reader) {
+        console.error("[Chat] No response body available");
         throw new Error("No response body");
       }
 
+      console.log("[Chat] Starting to read streaming response");
+
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          console.log("[Chat] Stream complete");
+          break;
+        }
 
         const chunk = decoder.decode(value);
         // Split by newlines since the endpoint writes line-delimited JSON
@@ -279,6 +292,7 @@
         for (const line of lines) {
           try {
             const event = JSON.parse(line);
+            console.log("[Chat] Event received:", event.type, event);
 
             switch (event.type) {
               case "delta":
@@ -294,10 +308,12 @@
                 break;
 
               case "error":
+                console.error("[Chat] Error event from server:", event.content);
                 addMessage(`Error: ${event.content}`, "bot");
                 return;
 
               case "done":
+                console.log("[Chat] Done event received with content length:", event.messageContent?.length);
                 // Final message - update with complete content
                 if (event.messageContent) {
                   botMessage = event.messageContent;
@@ -311,8 +327,9 @@
                 }
                 return;
             }
-          } catch (_) {
+          } catch (parseError) {
             // Skip invalid JSON lines
+            console.warn("[Chat] Failed to parse JSON line:", line, parseError);
           }
         }
       }
@@ -324,6 +341,7 @@
         addMessage("Thanks, we'll be in touch.", "bot");
       }
     } catch (err) {
+      console.error("[Chat] Error sending message:", err.message || err);
       if (typingNode && typingNode.parentNode) {
         typingNode.parentNode.removeChild(typingNode);
       }
