@@ -90,6 +90,16 @@
       flex-direction:column;
     }
 
+    .footer {
+      padding: 6px 8px;
+      text-align: center;
+      font-size: 11px;
+      opacity: 0.6;
+      border-top: 1px solid ${cfg.theme === "dark" ? "rgba(255,255,255,.08)" : "#eee"};
+      background: ${cfg.theme === "dark" ? "#0f1526" : "#fafafa"};
+      color: inherit;
+    }
+
     .msgs {
       flex: 1;
       overflow-y: auto;
@@ -195,6 +205,7 @@
         <input id="ys-input" placeholder="Type a message…" autocomplete="off" />
         <button type="submit">Send</button>
       </form>
+      <div class="footer">Powered by Mxpert</div>
     </div>
   `;
 
