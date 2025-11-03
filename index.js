@@ -210,6 +210,7 @@
   const closeBtn = panel.querySelector(".close-btn");
 
   let isOpen = false;
+  let conversationId = null; // Track conversation ID across turns
 
   function scrollMsgsToBottom() {
     msgsEl.scrollTop = msgsEl.scrollHeight;
@@ -241,15 +242,19 @@
 
     try {
       const url = cfg.api.startsWith("http") ? cfg.api : `https://${cfg.api}`;
+
+      const requestBody = { content: userText };
+      if (conversationId) {
+        requestBody.conversation_id = conversationId;
+      }
+
       console.log("[Chat] Sending message to endpoint:", url);
-      console.log("[Chat] Request body:", { content: userText });
+      console.log("[Chat] Request body:", requestBody);
 
       const resp = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: userText,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!resp.ok) {
@@ -307,6 +312,11 @@
                 scrollMsgsToBottom();
                 break;
 
+              case "status":
+                // Show tool call status messages
+                addStatus(event.content);
+                break;
+
               case "error":
                 console.error("[Chat] Error event from server:", event.content);
                 addMessage(`Error: ${event.content}`, "bot");
@@ -314,6 +324,11 @@
 
               case "done":
                 console.log("[Chat] Done event received with content length:", event.messageContent?.length);
+                // Store conversation_id for subsequent messages
+                if (event.conversation_id) {
+                  conversationId = event.conversation_id;
+                  console.log("[Chat] Conversation ID stored:", conversationId);
+                }
                 // Final message - update with complete content
                 if (event.messageContent) {
                   botMessage = event.messageContent;
