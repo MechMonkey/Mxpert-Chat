@@ -100,6 +100,16 @@
       color: inherit;
     }
 
+    .footer a {
+      color: inherit;
+      text-decoration: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .footer a:hover {
+      opacity: 1;
+    }
+
     .msgs {
       flex: 1;
       overflow-y: auto;
@@ -205,7 +215,7 @@
         <input id="ys-input" placeholder="Type a message…" autocomplete="off" />
         <button type="submit">Send</button>
       </form>
-      <div class="footer">Powered by Mxpert</div>
+      <div class="footer"><a href="https://mxpert.ai" target="_blank" rel="noopener noreferrer">Powered by Mxpert</a></div>
     </div>
   `;
 
