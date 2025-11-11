@@ -9,6 +9,8 @@
     theme: (SCRIPT?.dataset.theme || SCRIPT?.getAttribute("theme") || "light").toLowerCase(),
     primary: SCRIPT?.dataset.primary || SCRIPT?.getAttribute("primary") || "#3b82f6",
     containerId: SCRIPT?.dataset.containerId || SCRIPT?.getAttribute("containerId") || "yoursaas-chat-container",
+    width: SCRIPT?.dataset.width || SCRIPT?.getAttribute("width") || "100%",
+    height: SCRIPT?.dataset.height || SCRIPT?.getAttribute("height") || "600px",
   };
 
   // Find or create the container element
@@ -17,7 +19,6 @@
     console.warn(`[Chat] Container with ID "${cfg.containerId}" not found. Creating one.`);
     container = document.createElement("div");
     container.id = cfg.containerId;
-    container.style.height = "100vh";
     document.body.appendChild(container);
   }
 
@@ -25,8 +26,8 @@
   const root = document.createElement("div");
   root.setAttribute("data-yoursaas-chat-fullpage", "");
   root.style.all = "initial";
-  root.style.width = "100%";
-  root.style.height = "100%";
+  root.style.width = cfg.width;
+  root.style.height = cfg.height;
   root.style.display = "flex";
   root.style.flexDirection = "column";
   container.appendChild(root);
@@ -43,6 +44,8 @@
       flex-direction: column;
       width: 100%;
       height: 100%;
+      border-radius: 12px;
+      overflow: hidden;
     }
 
     * { box-sizing: border-box; }
