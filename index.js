@@ -53,24 +53,54 @@
       height: min(560px, calc(100vh - 120px));
       border-radius: 16px;
       overflow: hidden;
-      display: none;
       background: ${cfg.theme === "dark" ? "#0b0f1a" : "#ffffff"};
       color: ${cfg.theme === "dark" ? "#ffffff" : "#111111"};
       box-shadow: 0 18px 60px rgba(0,0,0,.28);
       font: 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      opacity: 0;
+      transform: translateY(10px) scale(0.95);
+      pointer-events: none;
+      transition: opacity 0.3s ease, transform 0.3s ease;
     }
-    .panel.open { display: block; }
+    .panel.open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
 
     .header {
-      height: 46px;
+      height: 56px;
       display:flex;
       align-items:center;
       justify-content:space-between;
-      padding: 0 12px;
+      padding: 0 16px;
       border-bottom: 1px solid ${cfg.theme === "dark" ? "rgba(255,255,255,.08)" : "#eee"};
       background: ${cfg.theme === "dark" ? "#0f1526" : "#fafafa"};
       font-weight: 600;
       font-size: 14px;
+    }
+
+    .header-content {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .profile-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: ${cfg.primary};
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .profile-icon svg {
+      width: 18px;
+      height: 18px;
+      color: #ffffff;
     }
 
     .close-btn {
@@ -85,7 +115,7 @@
 
     .body {
       width: 100%;
-      height: calc(100% - 46px);
+      height: calc(100% - 56px);
       display:flex;
       flex-direction:column;
     }
@@ -151,34 +181,66 @@
 
     .inputrow {
       display:flex;
-      gap:6px;
-      padding: 8px;
+      gap:8px;
+      padding: 12px;
       border-top: 1px solid ${cfg.theme==='dark' ? 'rgba(255,255,255,.08)' : '#eee'};
       background: ${cfg.theme === "dark" ? "#0f1526" : "#fafafa"};
+      align-items: flex-end;
     }
 
-    .inputrow input {
+    .inputrow textarea {
       flex:1;
-      height:36px;
-      border-radius:8px;
-      border:1px solid ${cfg.theme==='dark' ? 'rgba(255,255,255,.12)' : '#ddd'};
-      background:${cfg.theme==='dark' ? '#0f1526' : '#ffffff'};
+      min-height:40px;
+      max-height:120px;
+      border-radius:12px;
+      border:1px solid ${cfg.theme==='dark' ? 'rgba(255,255,255,.15)' : '#d1d5db'};
+      background:${cfg.theme==='dark' ? '#1a1f35' : '#ffffff'};
       color:inherit;
-      padding:0 10px;
+      padding:10px 14px;
       outline:none;
-      font: 14px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      font: 14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      resize: none;
+      overflow-y: auto;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .inputrow textarea:focus {
+      border-color: ${cfg.primary};
+      box-shadow: 0 0 0 3px ${cfg.primary}20;
+    }
+
+    .inputrow textarea::placeholder {
+      color: ${cfg.theme==='dark' ? 'rgba(255,255,255,.4)' : '#9ca3af'};
     }
 
     .inputrow button {
-      height:36px;
-      border-radius:8px;
+      min-height:40px;
+      height:40px;
+      border-radius:12px;
       border:0;
       background:${cfg.primary};
       color:#ffffff;
-      padding:0 12px;
+      padding:0 16px;
       cursor:pointer;
-      font-weight:500;
+      font-weight:600;
       font: 14px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 2px 8px ${cfg.primary}40;
+    }
+
+    .inputrow button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px ${cfg.primary}50;
+    }
+
+    .inputrow button:active {
+      transform: translateY(0);
+    }
+
+    .inputrow button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
     }
 
     .bubble svg {
@@ -284,13 +346,21 @@
 
   panel.innerHTML = `
     <div class="header">
-      <div>Chat</div>
+      <div class="header-content">
+        <div class="profile-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+        <div>Chat with Service Advisor</div>
+      </div>
       <button class="close-btn" aria-label="Close">&times;</button>
     </div>
     <div class="body">
       <div class="msgs" id="ys-msgs"></div>
       <form class="inputrow" id="ys-form">
-        <input id="ys-input" placeholder="Type a message…" autocomplete="off" />
+        <textarea id="ys-input" placeholder="Type a message…" rows="1" autocomplete="off"></textarea>
         <button type="submit">Send</button>
       </form>
       <div class="footer"><a href="https://mxpert.ai" target="_blank" rel="noopener noreferrer">Powered by Mxpert</a></div>
@@ -531,12 +601,30 @@
     }
   }
 
+  // Auto-resize textarea
+  function autoResizeTextarea() {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+  }
+
+  // Handle textarea input for auto-resize
+  inputEl.addEventListener('input', autoResizeTextarea);
+
+  // Handle Enter key (Enter to send, Shift+Enter for new line)
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      formEl.dispatchEvent(new Event('submit'));
+    }
+  });
+
   // form submit handler
   formEl.addEventListener("submit", (e) => {
     e.preventDefault();
     const text = inputEl.value.trim();
     if (!text) return;
     inputEl.value = "";
+    inputEl.style.height = 'auto'; // Reset height after sending
     sendMessageToApi(text);
   });
 
