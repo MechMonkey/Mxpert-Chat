@@ -11,6 +11,39 @@
     primary: SCRIPT?.dataset.primary || SCRIPT?.getAttribute("primary") || "#3b82f6",
   };
 
+  // Constants
+  const CONSTANTS = {
+    DISCLAIMER_KEY: "mxpert_disclaimer_agreed",
+    PREVIEW_SHOWN_KEY: "mxpert-preview-shown",
+    TRANSITION_FAST: "0.15s ease",
+    TRANSITION_NORMAL: "0.2s ease",
+    TRANSITION_SLOW: "0.3s ease",
+  };
+
+  // Reusable avatar SVG
+  const AVATAR_SVG = `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+    <path fill="#fc663d" d="M44.39,44.5H3.61c0-7,3.16-12.74,10.19-12.74H34.2c7,0,10.19,5.7,10.19,12.74Z"/>
+    <path fill="#f7cc94" d="M27.82,21.56V33a3.82,3.82,0,0,1-7.64,0V21.56Z"/>
+    <path fill="#f4b392" d="M31.57,17.74a10.57,10.57,0,0,1-3.75,7.54v2.55a6,6,0,0,1-7.64,0V25.28a10.57,10.57,0,0,1-3.75-7.54c.46-5,3.67-8.92,7.57-8.92S31.11,12.72,31.57,17.74Z"/>
+    <path fill="#f7cc94" d="M31.65,16.46a10.6,10.6,0,0,1-.08,1.28,10.57,10.57,0,0,1-3.75,7.54,6,6,0,0,1-7.64,0,10.57,10.57,0,0,1-3.75-7.54,10.6,10.6,0,0,1-.08-1.28c0-5.63,3.42-10.19,7.65-10.19S31.65,10.83,31.65,16.46Z"/>
+    <path fill="#f7cc94" d="M34.2,16.46A2.55,2.55,0,0,1,31.65,19c-1.41,0,0-1.14,0-2.55s-1.41-2.55,0-2.55A2.55,2.55,0,0,1,34.2,16.46Z"/>
+    <path fill="#f7cc94" d="M13.8,16.46A2.55,2.55,0,0,0,16.35,19c1.41,0,0-1.14,0-2.55s1.41-2.55,0-2.55A2.55,2.55,0,0,0,13.8,16.46Z"/>
+    <circle fill="#3f1400" cx="20.94" cy="14.17" r="0.51"/>
+    <circle fill="#3f1400" cx="27.06" cy="14.17" r="0.51"/>
+    <path fill="none" stroke="#3f1400" stroke-linecap="round" stroke-linejoin="round" stroke-width="0.5" d="M19.16,12.64s1.73-2,3.57-1"/>
+    <path fill="none" stroke="#3f1400" stroke-linecap="round" stroke-linejoin="round" stroke-width="0.5" d="M28.84,12.64s-1.73-2-3.57-1"/>
+    <path fill="none" stroke="#3f1400" stroke-linecap="round" stroke-linejoin="round" stroke-width="0.5" d="M23.49,14.68s-2,5.1-1,5.1h1"/>
+    <path fill="none" stroke="#3f1400" stroke-linecap="round" stroke-linejoin="round" stroke-width="0.5" d="M23.49,21.81s3.06,0,4.08-1"/>
+    <path fill="#3f1400" d="M17,14.44s3-5,3-6c0,0,1,2,7,0s6-5,6-5-5,2-8,1-7,0-6,2c0,0-2-1-2,0S15.05,13.45,17,14.44Z"/>
+    <path fill="#3f1400" d="M30,6.48s3,7,1,8c0,0-3-6-3-7S30,6.48,30,6.48Z"/>
+  </svg>`;
+
+  // Helper function to temporarily add/remove classes for animations
+  const animateClass = (element, className, duration = 300) => {
+    element.classList.add(className);
+    setTimeout(() => element.classList.remove(className), duration);
+  };
+
   // Root mount point
   const root = document.createElement("div");
   root.setAttribute("data-yoursaas-chat", "");
@@ -698,22 +731,7 @@
     <div class="header">
       <div class="header-content">
         <div class="profile-icon">
-          <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-            <path fill="#fc663d" d="M44.39,44.5H3.61c0-7,3.16-12.74,10.19-12.74H34.2c7,0,10.19,5.7,10.19,12.74Z"/>
-            <path fill="#f7cc94" d="M27.82,21.56V33a3.82,3.82,0,0,1-7.64,0V21.56Z"/>
-            <path fill="#f4b392" d="M31.57,17.74a10.57,10.57,0,0,1-3.75,7.54v2.55a6,6,0,0,1-7.64,0V25.28a10.57,10.57,0,0,1-3.75-7.54c.46-5,3.67-8.92,7.57-8.92S31.11,12.72,31.57,17.74Z"/>
-            <path fill="#f7cc94" d="M31.65,16.46a10.6,10.6,0,0,1-.08,1.28,10.57,10.57,0,0,1-3.75,7.54,6,6,0,0,1-7.64,0,10.57,10.57,0,0,1-3.75-7.54,10.6,10.6,0,0,1-.08-1.28c0-5.63,3.42-10.19,7.65-10.19S31.65,10.83,31.65,16.46Z"/>
-            <path fill="#f7cc94" d="M34.2,16.46A2.55,2.55,0,0,1,31.65,19c-1.41,0,0-1.14,0-2.55s-1.41-2.55,0-2.55A2.55,2.55,0,0,1,34.2,16.46Z"/>
-            <path fill="#f7cc94" d="M13.8,16.46A2.55,2.55,0,0,0,16.35,19c1.41,0,0-1.14,0-2.55s1.41-2.55,0-2.55A2.55,2.55,0,0,0,13.8,16.46Z"/>
-            <circle fill="#3f1400" cx="20.94" cy="14.17" r="0.51"/>
-            <circle fill="#3f1400" cx="27.06" cy="14.17" r="0.51"/>
-            <path fill="none" stroke="#3f1400" stroke-linecap="round" stroke-linejoin="round" stroke-width="0.5" d="M19.16,12.64s1.73-2,3.57-1"/>
-            <path fill="none" stroke="#3f1400" stroke-linecap="round" stroke-linejoin="round" stroke-width="0.5" d="M28.84,12.64s-1.73-2-3.57-1"/>
-            <path fill="none" stroke="#3f1400" stroke-linecap="round" stroke-linejoin="round" stroke-width="0.5" d="M23.49,14.68s-2,5.1-1,5.1h1"/>
-            <path fill="none" stroke="#3f1400" stroke-linecap="round" stroke-linejoin="round" stroke-width="0.5" d="M23.49,21.81s3.06,0,4.08-1"/>
-            <path fill="#3f1400" d="M17,14.44s3-5,3-6c0,0,1,2,7,0s6-5,6-5-5,2-8,1-7,0-6,2c0,0-2-1-2,0S15.05,13.45,17,14.44Z"/>
-            <path fill="#3f1400" d="M30,6.48s3,7,1,8c0,0-3-6-3-7S30,6.48,30,6.48Z"/>
-          </svg>
+          ${AVATAR_SVG}
         </div>
         <div class="header-text">
           <div class="header-title">Chat with Service Advisor</div>
@@ -774,22 +792,7 @@
   previewPopup.innerHTML = `
     <div class="preview-header">
       <div class="preview-avatar">
-        <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-          <path fill="#fc663d" d="M44.39,44.5H3.61c0-7,3.16-12.74,10.19-12.74H34.2c7,0,10.19,5.7,10.19,12.74Z"/>
-          <path fill="#f7cc94" d="M27.82,21.56V33a3.82,3.82,0,0,1-7.64,0V21.56Z"/>
-          <path fill="#f4b392" d="M31.57,17.74a10.57,10.57,0,0,1-3.75,7.54v2.55a6,6,0,0,1-7.64,0V25.28a10.57,10.57,0,0,1-3.75-7.54c.46-5,3.67-8.92,7.57-8.92S31.11,12.72,31.57,17.74Z"/>
-          <path fill="#f7cc94" d="M31.65,16.46a10.6,10.6,0,0,1-.08,1.28,10.57,10.57,0,0,1-3.75,7.54,6,6,0,0,1-7.64,0,10.57,10.57,0,0,1-3.75-7.54,10.6,10.6,0,0,1-.08-1.28c0-5.63,3.42-10.19,7.65-10.19S31.65,10.83,31.65,16.46Z"/>
-          <path fill="#f7cc94" d="M34.2,16.46A2.55,2.55,0,0,1,31.65,19c-1.41,0,0-1.14,0-2.55s-1.41-2.55,0-2.55A2.55,2.55,0,0,1,34.2,16.46Z"/>
-          <path fill="#f7cc94" d="M13.8,16.46A2.55,2.55,0,0,0,16.35,19c1.41,0,0-1.14,0-2.55s1.41-2.55,0-2.55A2.55,2.55,0,0,0,13.8,16.46Z"/>
-          <circle fill="#3f1400" cx="20.94" cy="14.17" r="0.51"/>
-          <circle fill="#3f1400" cx="27.06" cy="14.17" r="0.51"/>
-          <path fill="none" stroke="#3f1400" stroke-linecap="round" stroke-linejoin="round" stroke-width="0.5" d="M19.16,12.64s1.73-2,3.57-1"/>
-          <path fill="none" stroke="#3f1400" stroke-linecap="round" stroke-linejoin="round" stroke-width="0.5" d="M28.84,12.64s-1.73-2-3.57-1"/>
-          <path fill="none" stroke="#3f1400" stroke-linecap="round" stroke-linejoin="round" stroke-width="0.5" d="M23.49,14.68s-2,5.1-1,5.1h1"/>
-          <path fill="none" stroke="#3f1400" stroke-linecap="round" stroke-linejoin="round" stroke-width="0.5" d="M23.49,21.81s3.06,0,4.08-1"/>
-          <path fill="#3f1400" d="M17,14.44s3-5,3-6c0,0,1,2,7,0s6-5,6-5-5,2-8,1-7,0-6,2c0,0-2-1-2,0S15.05,13.45,17,14.44Z"/>
-          <path fill="#3f1400" d="M30,6.48s3,7,1,8c0,0-3-6-3-7S30,6.48,30,6.48Z"/>
-        </svg>
+        ${AVATAR_SVG}
       </div>
       <div class="preview-title">Service Advisor</div>
       <button class="preview-close" aria-label="Close preview">
@@ -824,19 +827,15 @@
   let isOpen = false;
   let conversationId = null; // Track conversation ID across turns
   
-  // Check if user has already agreed to disclaimer
-  const DISCLAIMER_KEY = "mxpert_disclaimer_agreed";
-  const hasAgreed = localStorage.getItem(DISCLAIMER_KEY);
-  
   // Handle disclaimer agreement
   disclaimerAgreeBtn.addEventListener("click", () => {
-    localStorage.setItem(DISCLAIMER_KEY, "true");
+    localStorage.setItem(CONSTANTS.DISCLAIMER_KEY, "true");
     disclaimerOverlay.classList.remove("show");
   });
   
   // Show disclaimer on first chat open if not agreed
   function checkAndShowDisclaimer() {
-    if (!localStorage.getItem(DISCLAIMER_KEY)) {
+    if (!localStorage.getItem(CONSTANTS.DISCLAIMER_KEY)) {
       setTimeout(() => {
         disclaimerOverlay.classList.add("show");
       }, 500);
@@ -847,56 +846,43 @@
     msgsEl.scrollTop = msgsEl.scrollHeight;
   }
 
-  // Simple markdown parser
+  // Simple markdown parser - optimized for fewer passes
   function parseMarkdown(text) {
     const div = document.createElement("div");
-    let html = text;
-
+    
     // Escape HTML to prevent injection
     const escapeHtml = (str) => {
       const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
       return str.replace(/[&<>"']/g, (m) => map[m]);
     };
 
-    // Process block elements first (to avoid conflicts)
-    // Headers
-    html = html.replace(/^### (.*?)$/gm, "<h3>$1</h3>");
-    html = html.replace(/^## (.*?)$/gm, "<h2>$1</h2>");
-    html = html.replace(/^# (.*?)$/gm, "<h1>$1</h1>");
-
-    // Code blocks (triple backticks)
-    html = html.replace(/```([\s\S]*?)```/g, (match, code) => {
-      const escapedCode = escapeHtml(code.trim());
-      return `<pre><code>${escapedCode}</code></pre>`;
-    });
-
-    // Blockquotes
-    html = html.replace(/^> (.*?)$/gm, "<blockquote>$1</blockquote>");
-
-    // Horizontal rule
-    html = html.replace(/^---$/gm, "<hr />");
-
-    // Unordered lists
-    html = html.replace(/^\* (.*?)$/gm, "<li>$1</li>");
-    html = html.replace(/(<li>.*?<\/li>)/s, "<ul>$1</ul>");
-
-    // Process inline elements
-    // Bold
-    html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-    html = html.replace(/__(.+?)__/g, "<strong>$1</strong>");
-
-    // Italic
-    html = html.replace(/\*(.*?)\*/g, "<em>$1</em>");
-    html = html.replace(/_(.+?)_/g, "<em>$1</em>");
-
-    // Inline code
-    html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
-
-    // Links [text](url)
-    html = html.replace(/\[(.*?)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-
-    // Line breaks
-    html = html.replace(/\n/g, "<br />");
+    // Process in a single pass with ordered replacements to avoid conflicts
+    let html = text
+      // Code blocks first (to protect from other replacements)
+      .replace(/```([\s\S]*?)```/g, (match, code) => `<pre><code>${escapeHtml(code.trim())}</code></pre>`)
+      // Headers (largest to smallest to avoid conflicts)
+      .replace(/^### (.*?)$/gm, "<h3>$1</h3>")
+      .replace(/^## (.*?)$/gm, "<h2>$1</h2>")
+      .replace(/^# (.*?)$/gm, "<h1>$1</h1>")
+      // Blockquotes
+      .replace(/^> (.*?)$/gm, "<blockquote>$1</blockquote>")
+      // Horizontal rule
+      .replace(/^---$/gm, "<hr />")
+      // Links (before bold/italic to avoid conflicts with asterisks)
+      .replace(/\[(.*?)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+      // Bold (both styles)
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      .replace(/__(.+?)__/g, "<strong>$1</strong>")
+      // Italic (both styles, after bold to avoid conflicts)
+      .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+      .replace(/_([^_]+)_/g, "<em>$1</em>")
+      // Inline code
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      // Unordered lists
+      .replace(/^\* (.*?)$/gm, "<li>$1</li>")
+      .replace(/(<li>.*?<\/li>)/s, "<ul>$1</ul>")
+      // Line breaks last
+      .replace(/\n/g, "<br />");
 
     div.innerHTML = html;
     return div;
@@ -904,7 +890,7 @@
 
   function addStatus(text, cssClass = "") {
     const d = document.createElement("div");
-    d.className = `status ${cssClass}`.trim();
+    d.className = cssClass ? `status ${cssClass}` : "status";
     d.textContent = text;
     msgsEl.appendChild(d);
     scrollMsgsToBottom();
@@ -914,11 +900,6 @@
   function addMessage(text, who /* "me" | "bot" */, animate = false) {
     const d = document.createElement("div");
     d.className = `msg ${who}`;
-
-    // Add sending animation for user messages
-    if (animate && who === "me") {
-      d.classList.add("sending");
-    }
 
     // Parse markdown for bot messages, plain text for user messages
     if (who === "bot") {
@@ -930,11 +911,9 @@
     msgsEl.appendChild(d);
     scrollMsgsToBottom();
 
-    // Remove animation class after animation completes
+    // Add sending animation for user messages
     if (animate && who === "me") {
-      setTimeout(() => {
-        d.classList.remove("sending");
-      }, 300);
+      animateClass(d, "sending", 300);
     }
   }
 
@@ -1103,18 +1082,12 @@
     const inputPill = formEl.querySelector('.input-pill');
 
     // Add sending animation classes
-    sendBtn.classList.add('sending');
-    inputPill.classList.add('sending');
+    animateClass(sendBtn, 'sending', 150);
+    animateClass(inputPill, 'sending', 150);
 
     // Clear input immediately for better UX
     inputEl.value = "";
     inputEl.style.height = 'auto'; // Reset height after sending
-
-    // Remove button animation after a brief moment
-    setTimeout(() => {
-      sendBtn.classList.remove('sending');
-      inputPill.classList.remove('sending');
-    }, 150);
 
     // Send the message
     sendMessageToApi(text);
@@ -1127,17 +1100,10 @@
     
     if (!isOpen && wasOpen) {
       // Add closing animation
-      panel.classList.add("closing");
+      animateClass(panel, "closing", 300);
       panel.classList.remove("open");
       bubble.classList.remove("open");
-      
-      // Remove closing class after animation completes
-      setTimeout(() => {
-        panel.classList.remove("closing");
-      }, 300);
     } else if (isOpen) {
-      // Remove closing class if it exists
-      panel.classList.remove("closing");
       panel.classList.add("open");
       bubble.classList.add("open");
     } else {
@@ -1164,19 +1130,19 @@
     }
   }
 
-  bubble.addEventListener("click", () => togglePanel());
-  closeBtn.addEventListener("click", () => closePanel());
+  bubble.addEventListener("click", togglePanel);
+  closeBtn.addEventListener("click", closePanel);
 
   function togglePanel() {
     // Hide preview popup when opening panel
-    if (!isOpen) {
-      hidePreviewPopup();
-    }
+    if (!isOpen) hidePreviewPopup();
     openPanel(!isOpen);
   }
+  
   function closePanel() {
     openPanel(false);
   }
+  
   function openNow() {
     hidePreviewPopup();
     openPanel(true);
@@ -1187,7 +1153,7 @@
   const previewCtaBtn = previewPopup.querySelector('.preview-cta');
   
   function showPreviewPopup() {
-    const previewShown = localStorage.getItem('mxpert-preview-shown');
+    const previewShown = localStorage.getItem(CONSTANTS.PREVIEW_SHOWN_KEY);
     if (!previewShown && !isOpen) {
       setTimeout(() => {
         previewPopup.classList.add('show');
@@ -1196,11 +1162,11 @@
   }
 
   function hidePreviewPopup() {
-    previewPopup.classList.add('hide');
+    animateClass(previewPopup, 'hide', 300);
     setTimeout(() => {
-      previewPopup.classList.remove('show', 'hide');
+      previewPopup.classList.remove('show');
     }, 300);
-    localStorage.setItem('mxpert-preview-shown', 'true');
+    localStorage.setItem(CONSTANTS.PREVIEW_SHOWN_KEY, 'true');
   }
 
   previewCloseBtn.addEventListener('click', () => {
@@ -1229,7 +1195,8 @@
     toggle: togglePanel,
     // fire custom events / tracking to your backend without user seeing a message
     track: (eventPayload) => {
-      fetch(`https://${cfg.api}/chat/track`, {
+      const trackingUrl = cfg.api.startsWith("http") ? `${cfg.api}/chat/track` : `https://${cfg.api}/chat/track`;
+      fetch(trackingUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
