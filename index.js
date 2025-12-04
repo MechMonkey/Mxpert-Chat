@@ -13,7 +13,6 @@
 
   // Constants
   const CONSTANTS = {
-    DISCLAIMER_KEY: "mxpert_disclaimer_agreed",
     PREVIEW_SHOWN_KEY: "mxpert-preview-shown",
     TRANSITION_FAST: "0.15s ease",
     TRANSITION_NORMAL: "0.2s ease",
@@ -250,6 +249,29 @@
       pointer-events: none;
       transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
+
+    @media (max-width: 480px) {
+      .panel {
+        position: fixed;
+        bottom: 0;
+        right: 0;
+        left: 0;
+        top: 0;
+        width: 100vw;
+        height: 100vh; /* Fallback */
+        height: 100dvh;
+        border-radius: 0;
+        transform-origin: bottom right;
+      }
+      
+      .preview-popup {
+        bottom: 80px;
+        width: calc(100vw - 32px);
+        left: 16px;
+        right: 16px;
+      }
+    }
+    
     .panel.open {
       opacity: 1;
       transform: scale(1) translateY(0);
@@ -384,76 +406,6 @@
 
     .footer a:hover .logo-svg {
       opacity: 1;
-    }
-
-    /* Disclaimer Modal */
-    .disclaimer-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      z-index: 1000;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
-    }
-
-    .disclaimer-overlay.show {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .disclaimer-modal {
-      background: ${cfg.theme === "dark" ? "#1a1f35" : "#ffffff"};
-      border-radius: 12px;
-      padding: 24px;
-      max-width: 380px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-      text-align: center;
-    }
-
-    .disclaimer-content {
-      font-size: 14px;
-      line-height: 1.6;
-      color: ${cfg.theme === "dark" ? "#e5e7eb" : "#4b5563"};
-      margin-bottom: 20px;
-    }
-
-    .disclaimer-content a {
-      color: ${cfg.primary};
-      text-decoration: underline;
-    }
-
-    .disclaimer-content a:hover {
-      opacity: 0.8;
-    }
-
-    .disclaimer-button {
-      background: ${cfg.primary};
-      color: white;
-      border: none;
-      border-radius: 8px;
-      padding: 12px 32px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-      box-shadow: 0 2px 8px ${cfg.primary}40;
-    }
-
-    .disclaimer-button:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px ${cfg.primary}50;
-    }
-
-    .disclaimer-button:active {
-      transform: translateY(0);
     }
 
     .msgs {
@@ -776,14 +728,6 @@
         </a>
       </div>
     </div>
-    <div class="disclaimer-overlay" id="disclaimer-overlay">
-      <div class="disclaimer-modal">
-        <div class="disclaimer-content">
-          We use cookies to enhance your experience and maintain chat history. For quality assurance, conversations may be monitored and recorded (see our <a href="https://mxpert.ai/privacy-policy/" target="_blank" rel="noopener noreferrer">Privacy Policy</a>).
-        </div>
-        <button class="disclaimer-button" id="disclaimer-agree">I Agree</button>
-      </div>
-    </div>
   `;
 
   // Preview popup
@@ -821,27 +765,10 @@
   const formEl = panel.querySelector("#ys-form");
   const inputEl = panel.querySelector("#ys-input");
   const closeBtn = panel.querySelector(".close-btn");
-  const disclaimerOverlay = panel.querySelector("#disclaimer-overlay");
-  const disclaimerAgreeBtn = panel.querySelector("#disclaimer-agree");
 
   let isOpen = false;
   let conversationId = null; // Track conversation ID across turns
   
-  // Handle disclaimer agreement
-  disclaimerAgreeBtn.addEventListener("click", () => {
-    localStorage.setItem(CONSTANTS.DISCLAIMER_KEY, "true");
-    disclaimerOverlay.classList.remove("show");
-  });
-  
-  // Show disclaimer on first chat open if not agreed
-  function checkAndShowDisclaimer() {
-    if (!localStorage.getItem(CONSTANTS.DISCLAIMER_KEY)) {
-      setTimeout(() => {
-        disclaimerOverlay.classList.add("show");
-      }, 500);
-    }
-  }
-
   function scrollMsgsToBottom() {
     msgsEl.scrollTop = msgsEl.scrollHeight;
   }
@@ -1115,9 +1042,6 @@
 
     // optional: focus the input when opened
     if (isOpen) {
-      // Check and show disclaimer on first open
-      checkAndShowDisclaimer();
-      
       // microtask so panel is visible before focus()
       setTimeout(() => {
         inputEl?.focus();
@@ -1156,7 +1080,9 @@
     const previewShown = localStorage.getItem(CONSTANTS.PREVIEW_SHOWN_KEY);
     if (!previewShown && !isOpen) {
       setTimeout(() => {
-        previewPopup.classList.add('show');
+        if (!isOpen) {
+          previewPopup.classList.add('show');
+        }
       }, 2000); // Show after 2 seconds
     }
   }
