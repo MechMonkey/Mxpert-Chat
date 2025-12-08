@@ -27,8 +27,8 @@
     try {
 
       const validationUrl = cfg.api.startsWith("http")
-        ? `${cfg.api}/page`
-        : `https://${cfg.api}/page`;
+        ? `${cfg.api}/page/check`
+        : `https://${cfg.api}/page/check`;
 
       const response = await fetch(validationUrl, {
         method: "POST",
