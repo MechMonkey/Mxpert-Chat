@@ -5,7 +5,7 @@
   const SCRIPT = document.currentScript;
   const cfg = {
     site: SCRIPT?.dataset.site || SCRIPT?.getAttribute("site") || "dev",
-    api: SCRIPT?.dataset.api || SCRIPT?.getAttribute("api") || "api.getmxpert.com/assistant/customer",
+    api: SCRIPT?.dataset.api || SCRIPT?.getAttribute("api") || "api-new.getmxpert.com/assistant/customer",
     position: SCRIPT?.dataset.position || SCRIPT?.getAttribute("position") || "bottom-right",
     theme: (SCRIPT?.dataset.theme || SCRIPT?.getAttribute("theme") || "light").toLowerCase(),
     primary: SCRIPT?.dataset.primary || SCRIPT?.getAttribute("primary") || "#3b82f6",
