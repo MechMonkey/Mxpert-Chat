@@ -23,11 +23,12 @@
 
   // Validate page before rendering chat
   async function validatePageAccess() {
-    
+
     try {
+
       const validationUrl = cfg.api.startsWith("http")
-        ? `${cfg.api}/customer/assistant/page`
-        : `https://${cfg.api}/customer/assistant/page`;
+        ? `${cfg.api}/page`
+        : `https://${cfg.api}/page`;
 
       const response = await fetch(validationUrl, {
         method: "POST",
