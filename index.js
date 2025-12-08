@@ -23,19 +23,11 @@
 
   // Validate page before rendering chat
   async function validatePageAccess() {
-    console.log("[Chat] validatePageAccess called, publicId:", cfg.publicId);
-
-    if (!cfg.publicId) {
-      console.warn("[Chat] No publicId provided, skipping page validation");
-      return true;
-    }
-
+    
     try {
       const validationUrl = cfg.api.startsWith("http")
         ? `${cfg.api}/customer/assistant/page`
         : `https://${cfg.api}/customer/assistant/page`;
-
-      console.log("[Chat] Calling validation endpoint:", validationUrl);
 
       const response = await fetch(validationUrl, {
         method: "POST",
