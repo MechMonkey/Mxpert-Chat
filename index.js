@@ -48,7 +48,7 @@
 
       const result = await response.json();
       console.log("[Chat] Page validation result:", result);
-      const isAllowed = result === true || result?.success === true;
+      const isAllowed = result.content === true || result?.success === true;
       console.log("[Chat] Is page allowed?", isAllowed);
       return isAllowed;
     } catch (err) {
