@@ -5,10 +5,11 @@
   const SCRIPT = document.currentScript;
   const cfg = {
     site: SCRIPT?.dataset.site || SCRIPT?.getAttribute("site") || "dev",
-    api: SCRIPT?.dataset.api || SCRIPT?.getAttribute("api") || "staging-api.getmxpert.com/assistant/customer",
+    api: SCRIPT?.dataset.api || SCRIPT?.getAttribute("api") || "api-new.getmxpert.com/assistant/customer",
     position: SCRIPT?.dataset.position || SCRIPT?.getAttribute("position") || "bottom-right",
     theme: (SCRIPT?.dataset.theme || SCRIPT?.getAttribute("theme") || "light").toLowerCase(),
     primary: SCRIPT?.dataset.primary || SCRIPT?.getAttribute("primary") || "#3b82f6",
+    publicId: SCRIPT?.dataset.publicId || SCRIPT?.getAttribute("publicId") || null,
   };
 
   // Constants
@@ -19,8 +20,52 @@
     TRANSITION_SLOW: "0.3s ease",
   };
 
-  // Reusable avatar SVG
-  const AVATAR_SVG = `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  // Validate page before rendering chat
+  async function validatePageAccess() {
+
+    try {
+
+      const validationUrl = cfg.api.startsWith("http")
+        ? `${cfg.api}/page/check`
+        : `https://${cfg.api}/page/check`;
+
+      const response = await fetch(validationUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          publicId: cfg.publicId,
+          reqOrigin: window.location.href,
+        }),
+      });
+
+      console.log("[Chat] Validation response status:", response.status);
+
+      if (!response.ok) {
+        console.error("[Chat] Page validation failed with status:", response.status);
+        return false;
+      }
+
+      const result = await response.json();
+      console.log("[Chat] Page validation result:", result);
+      const isAllowed = result.content === true || result?.success === true;
+      console.log("[Chat] Is page allowed?", isAllowed);
+      return isAllowed;
+    } catch (err) {
+      console.error("[Chat] Error during page validation:", err.message || err);
+      return false;
+    }
+  }
+
+  // Initialize chat widget
+  async function initializeChatWidget() {
+    const isAllowed = await validatePageAccess();
+    if (!isAllowed) {
+      console.log("[Chat] Chat widget is not allowed on this page");
+      return;
+    }
+
+    // Reusable avatar SVG
+    const AVATAR_SVG = `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
     <path fill="#fc663d" d="M44.39,44.5H3.61c0-7,3.16-12.74,10.19-12.74H34.2c7,0,10.19,5.7,10.19,12.74Z"/>
     <path fill="#f7cc94" d="M27.82,21.56V33a3.82,3.82,0,0,1-7.64,0V21.56Z"/>
     <path fill="#f4b392" d="M31.57,17.74a10.57,10.57,0,0,1-3.75,7.54v2.55a6,6,0,0,1-7.64,0V25.28a10.57,10.57,0,0,1-3.75-7.54c.46-5,3.67-8.92,7.57-8.92S31.11,12.72,31.57,17.74Z"/>
@@ -37,28 +82,28 @@
     <path fill="#3f1400" d="M30,6.48s3,7,1,8c0,0-3-6-3-7S30,6.48,30,6.48Z"/>
   </svg>`;
 
-  // Helper function to temporarily add/remove classes for animations
-  const animateClass = (element, className, duration = 300) => {
-    element.classList.add(className);
-    setTimeout(() => element.classList.remove(className), duration);
-  };
+    // Helper function to temporarily add/remove classes for animations
+    const animateClass = (element, className, duration = 300) => {
+      element.classList.add(className);
+      setTimeout(() => element.classList.remove(className), duration);
+    };
 
-  // Root mount point
-  const root = document.createElement("div");
-  root.setAttribute("data-yoursaas-chat", "");
-  root.style.all = "initial";
-  root.style.position = "fixed";
-  root.style.zIndex = "2147483647";
-  root.style[cfg.position.includes("left") ? "left" : "right"] = "20px";
-  root.style.bottom = "20px";
-  document.documentElement.appendChild(root);
+    // Root mount point
+    const root = document.createElement("div");
+    root.setAttribute("data-yoursaas-chat", "");
+    root.style.all = "initial";
+    root.style.position = "fixed";
+    root.style.zIndex = "2147483647";
+    root.style[cfg.position.includes("left") ? "left" : "right"] = "20px";
+    root.style.bottom = "20px";
+    document.documentElement.appendChild(root);
 
-  // Shadow DOM for style isolation
-  const shadow = root.attachShadow({ mode: "open" });
+    // Shadow DOM for style isolation
+    const shadow = root.attachShadow({ mode: "open" });
 
-  // Styles
-  const style = document.createElement("style");
-  style.textContent = `
+    // Styles
+    const style = document.createElement("style");
+    style.textContent = `
     :host { all: initial; }
     * { box-sizing: border-box; }
 
@@ -277,7 +322,7 @@
       transform: scale(1) translateY(0);
       pointer-events: auto;
     }
-    
+
     .panel.closing {
       opacity: 0;
       transform: scale(0.5) translateY(20px);
@@ -653,15 +698,15 @@
       pointer-events: none;
     }
   `;
-  shadow.appendChild(style);
+    shadow.appendChild(style);
 
-  //
-  // DOM structure
-  //
-  const bubble = document.createElement("button");
-  bubble.className = "bubble";
-  bubble.setAttribute("aria-label", "Open chat");
-  bubble.innerHTML = `
+    //
+    // DOM structure
+    //
+    const bubble = document.createElement("button");
+    bubble.className = "bubble";
+    bubble.setAttribute("aria-label", "Open chat");
+    bubble.innerHTML = `
     <div class="bubble-icon chat-icon">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M3 5.5A3.5 3.5 0 0 1 6.5 2h11A3.5 3.5 0 0 1 21 5.5v7A3.5 3.5 0 0 1 17.5 16H10l-4.5 4v-4H6.5A3.5 3.5 0 0 1 3 12.5v-7Z" stroke="currentColor" stroke-width="1.5" />
@@ -674,12 +719,12 @@
     </div>
   `;
 
-  const panel = document.createElement("div");
-  panel.className = "panel";
-  panel.setAttribute("role", "dialog");
-  panel.setAttribute("aria-modal", "true");
+    const panel = document.createElement("div");
+    panel.className = "panel";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-modal", "true");
 
-  panel.innerHTML = `
+    panel.innerHTML = `
     <div class="header">
       <div class="header-content">
         <div class="profile-icon">
@@ -730,10 +775,10 @@
     </div>
   `;
 
-  // Preview popup
-  const previewPopup = document.createElement("div");
-  previewPopup.className = "preview-popup";
-  previewPopup.innerHTML = `
+    // Preview popup
+    const previewPopup = document.createElement("div");
+    previewPopup.className = "preview-popup";
+    previewPopup.innerHTML = `
     <div class="preview-header">
       <div class="preview-avatar">
         ${AVATAR_SVG}
@@ -754,9 +799,9 @@
     </div>
   `;
 
-  shadow.appendChild(panel);
-  shadow.appendChild(previewPopup);
-  shadow.appendChild(bubble);
+    shadow.appendChild(panel);
+    shadow.appendChild(previewPopup);
+    shadow.appendChild(bubble);
 
   //
   // Behavior
@@ -773,382 +818,391 @@
     msgsEl.scrollTop = msgsEl.scrollHeight;
   }
 
-  // Simple markdown parser - optimized for fewer passes
-  function parseMarkdown(text) {
-    const div = document.createElement("div");
-    
-    // Escape HTML to prevent injection
-    const escapeHtml = (str) => {
-      const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
-      return str.replace(/[&<>"']/g, (m) => map[m]);
-    };
+    // Simple markdown parser - optimized for fewer passes
+    function parseMarkdown(text) {
+      const div = document.createElement("div");
 
-    // Process in a single pass with ordered replacements to avoid conflicts
-    let html = text
-      // Code blocks first (to protect from other replacements)
-      .replace(/```([\s\S]*?)```/g, (match, code) => `<pre><code>${escapeHtml(code.trim())}</code></pre>`)
-      // Headers (largest to smallest to avoid conflicts)
-      .replace(/^### (.*?)$/gm, "<h3>$1</h3>")
-      .replace(/^## (.*?)$/gm, "<h2>$1</h2>")
-      .replace(/^# (.*?)$/gm, "<h1>$1</h1>")
-      // Blockquotes
-      .replace(/^> (.*?)$/gm, "<blockquote>$1</blockquote>")
-      // Horizontal rule
-      .replace(/^---$/gm, "<hr />")
-      // Links (before bold/italic to avoid conflicts with asterisks)
-      .replace(/\[(.*?)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-      // Bold (both styles)
-      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-      .replace(/__(.+?)__/g, "<strong>$1</strong>")
-      // Italic (both styles, after bold to avoid conflicts)
-      .replace(/\*([^*]+)\*/g, "<em>$1</em>")
-      .replace(/_([^_]+)_/g, "<em>$1</em>")
-      // Inline code
-      .replace(/`([^`]+)`/g, "<code>$1</code>")
-      // Unordered lists
-      .replace(/^\* (.*?)$/gm, "<li>$1</li>")
-      .replace(/(<li>.*?<\/li>)/s, "<ul>$1</ul>")
-      // Line breaks last
-      .replace(/\n/g, "<br />");
+      // Escape HTML to prevent injection
+      const escapeHtml = (str) => {
+        const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
+        return str.replace(/[&<>"']/g, (m) => map[m]);
+      };
 
-    div.innerHTML = html;
-    return div;
-  }
+      // Process in a single pass with ordered replacements to avoid conflicts
+      let html = text
+        // Code blocks first (to protect from other replacements)
+        .replace(/```([\s\S]*?)```/g, (_, code) => `<pre><code>${escapeHtml(code.trim())}</code></pre>`)
+        // Headers (largest to smallest to avoid conflicts)
+        .replace(/^### (.*?)$/gm, "<h3>$1</h3>")
+        .replace(/^## (.*?)$/gm, "<h2>$1</h2>")
+        .replace(/^# (.*?)$/gm, "<h1>$1</h1>")
+        // Blockquotes
+        .replace(/^> (.*?)$/gm, "<blockquote>$1</blockquote>")
+        // Horizontal rule
+        .replace(/^---$/gm, "<hr />")
+        // Links (before bold/italic to avoid conflicts with asterisks)
+        .replace(/\[(.*?)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+        // Bold (both styles)
+        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+        .replace(/__(.+?)__/g, "<strong>$1</strong>")
+        // Italic (both styles, after bold to avoid conflicts)
+        .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+        .replace(/_([^_]+)_/g, "<em>$1</em>")
+        // Inline code
+        .replace(/`([^`]+)`/g, "<code>$1</code>")
+        // Unordered lists
+        .replace(/^\* (.*?)$/gm, "<li>$1</li>")
+        .replace(/(<li>.*?<\/li>)/s, "<ul>$1</ul>")
+        // Line breaks last
+        .replace(/\n/g, "<br />");
 
-  function addStatus(text, cssClass = "") {
-    const d = document.createElement("div");
-    d.className = cssClass ? `status ${cssClass}` : "status";
-    d.textContent = text;
-    msgsEl.appendChild(d);
-    scrollMsgsToBottom();
-    return d;
-  }
+      div.innerHTML = html;
+      return div;
+    }
 
-  function addMessage(text, who /* "me" | "bot" */, animate = false) {
-    const d = document.createElement("div");
-    d.className = `msg ${who}`;
-
-    // Parse markdown for bot messages, plain text for user messages
-    if (who === "bot") {
-      d.appendChild(parseMarkdown(text));
-    } else {
+    function addStatus(text, cssClass = "") {
+      const d = document.createElement("div");
+      d.className = cssClass ? `status ${cssClass}` : "status";
       d.textContent = text;
+      msgsEl.appendChild(d);
+      scrollMsgsToBottom();
+      return d;
     }
 
-    msgsEl.appendChild(d);
-    scrollMsgsToBottom();
+    function addMessage(text, who /* "me" | "bot" */, animate = false) {
+      const d = document.createElement("div");
+      d.className = `msg ${who}`;
 
-    // Add sending animation for user messages
-    if (animate && who === "me") {
-      animateClass(d, "sending", 300);
+      // Parse markdown for bot messages, plain text for user messages
+      if (who === "bot") {
+        d.appendChild(parseMarkdown(text));
+      } else {
+        d.textContent = text;
+      }
+
+      msgsEl.appendChild(d);
+      scrollMsgsToBottom();
+
+      // Add sending animation for user messages
+      if (animate && who === "me") {
+        animateClass(d, "sending", 300);
+      }
     }
-  }
 
-  async function sendMessageToApi(userText) {
-    // render user message immediately with animation
-    addMessage(userText, "me", true);
+    async function sendMessageToApi(userText) {
+      // render user message immediately with animation
+      addMessage(userText, "me", true);
 
-    // show "typing..."
-    const typingNode = addStatus("...", "typing");
+      // show "typing..."
+      const typingNode = addStatus("...", "typing");
 
-    try {
-      const url = cfg.api.startsWith("http") ? cfg.api : `https://${cfg.api}`;
+      try {
+        const url = cfg.api.startsWith("http") ? cfg.api : `https://${cfg.api}`;
 
-      const requestBody = { content: userText };
-      if (conversationId) {
-        requestBody.conversation_id = conversationId;
-      }
-
-      console.log("[Chat] Sending message to endpoint:", url);
-      console.log("[Chat] Request body:", requestBody);
-
-      const resp = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!resp.ok) {
-        const errorMsg = `HTTP ${resp.status}`;
-        console.error("[Chat] HTTP Error:", errorMsg);
-        throw new Error(errorMsg);
-      }
-
-      console.log("[Chat] Response received, status:", resp.status);
-
-      // remove typing
-      if (typingNode && typingNode.parentNode) {
-        typingNode.parentNode.removeChild(typingNode);
-      }
-
-      // Handle streaming response
-      const reader = resp.body?.getReader();
-      const decoder = new TextDecoder();
-      let botMessage = "";
-      let messageEl = null;
-
-      if (!reader) {
-        console.error("[Chat] No response body available");
-        throw new Error("No response body");
-      }
-
-      console.log("[Chat] Starting to read streaming response");
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          console.log("[Chat] Stream complete");
-          break;
+        const requestBody = {
+          content: userText,
+          pageUrl: window.location.href
+        };
+        if (conversationId) {
+          requestBody.conversation_id = conversationId;
         }
 
-        const chunk = decoder.decode(value);
-        // Split by newlines since the endpoint writes line-delimited JSON
-        const lines = chunk.split("\n").filter(line => line.trim());
+        console.log("[Chat] Sending message to endpoint:", url);
+        console.log("[Chat] Request body:", requestBody);
 
-        for (const line of lines) {
-          try {
-            const event = JSON.parse(line);
-            console.log("[Chat] Event received:", event.type, event);
+        const resp = await fetch(`${url}/message`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        });
 
-            switch (event.type) {
-              case "delta":
-                // Stream text content
-                botMessage += event.content;
-                if (!messageEl) {
-                  messageEl = document.createElement("div");
-                  messageEl.className = "msg bot";
-                  msgsEl.appendChild(messageEl);
-                }
-                // Clear and re-render with markdown parsing
-                messageEl.innerHTML = "";
-                messageEl.appendChild(parseMarkdown(botMessage));
-                scrollMsgsToBottom();
-                break;
+        if (!resp.ok) {
+          const errorMsg = `HTTP ${resp.status}`;
+          console.error("[Chat] HTTP Error:", errorMsg);
+          throw new Error(errorMsg);
+        }
 
-              case "status":
-                // Show tool call status messages
-                addStatus(event.content);
-                break;
+        console.log("[Chat] Response received, status:", resp.status);
 
-              case "error":
-                console.error("[Chat] Error event from server:", event.content);
-                addMessage(`Error: ${event.content}`, "bot");
-                return;
+        // remove typing
+        if (typingNode && typingNode.parentNode) {
+          typingNode.parentNode.removeChild(typingNode);
+        }
 
-              case "done":
-                console.log("[Chat] Done event received with content length:", event.messageContent?.length);
-                // Store conversation_id for subsequent messages
-                if (event.conversation_id) {
-                  conversationId = event.conversation_id;
-                  console.log("[Chat] Conversation ID stored:", conversationId);
-                }
-                // Final message - update with complete content
-                if (event.messageContent) {
-                  botMessage = event.messageContent;
+        // Handle streaming response
+        const reader = resp.body?.getReader();
+        const decoder = new TextDecoder();
+        let botMessage = "";
+        let messageEl = null;
+
+        if (!reader) {
+          console.error("[Chat] No response body available");
+          throw new Error("No response body");
+        }
+
+        console.log("[Chat] Starting to read streaming response");
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            console.log("[Chat] Stream complete");
+            break;
+          }
+
+          const chunk = decoder.decode(value);
+          // Split by newlines since the endpoint writes line-delimited JSON
+          const lines = chunk.split("\n").filter(line => line.trim());
+
+          for (const line of lines) {
+            try {
+              const event = JSON.parse(line);
+              console.log("[Chat] Event received:", event.type, event);
+
+              switch (event.type) {
+                case "delta":
+                  // Stream text content
+                  botMessage += event.content;
                   if (!messageEl) {
                     messageEl = document.createElement("div");
                     messageEl.className = "msg bot";
                     msgsEl.appendChild(messageEl);
                   }
+                  // Clear and re-render with markdown parsing
                   messageEl.innerHTML = "";
                   messageEl.appendChild(parseMarkdown(botMessage));
                   scrollMsgsToBottom();
-                }
-                return;
+                  break;
+
+                case "status":
+                  // Show tool call status messages
+                  addStatus(event.content);
+                  break;
+
+                case "error":
+                  console.error("[Chat] Error event from server:", event.content);
+                  addMessage(`Error: ${event.content}`, "bot");
+                  return;
+
+                case "done":
+                  console.log("[Chat] Done event received with content length:", event.messageContent?.length);
+                  // Store conversation_id for subsequent messages
+                  if (event.conversation_id) {
+                    conversationId = event.conversation_id;
+                    console.log("[Chat] Conversation ID stored:", conversationId);
+                  }
+                  // Final message - update with complete content
+                  if (event.messageContent) {
+                    botMessage = event.messageContent;
+                    if (!messageEl) {
+                      messageEl = document.createElement("div");
+                      messageEl.className = "msg bot";
+                      msgsEl.appendChild(messageEl);
+                    }
+                    messageEl.innerHTML = "";
+                    messageEl.appendChild(parseMarkdown(botMessage));
+                    scrollMsgsToBottom();
+                  }
+                  return;
+              }
+            } catch (parseError) {
+              // Skip invalid JSON lines
+              console.warn("[Chat] Failed to parse JSON line:", line, parseError);
             }
-          } catch (parseError) {
-            // Skip invalid JSON lines
-            console.warn("[Chat] Failed to parse JSON line:", line, parseError);
           }
         }
-      }
 
-      // Fallback if no done event received
-      if (botMessage) {
-        addMessage(botMessage, "bot");
-      } else {
-        addMessage("Thanks, we'll be in touch.", "bot");
-      }
-    } catch (err) {
-      console.error("[Chat] Error sending message:", err.message || err);
-      if (typingNode && typingNode.parentNode) {
-        typingNode.parentNode.removeChild(typingNode);
-      }
-      addMessage(
-        "Sorry, we're having trouble right now. Please call the shop.",
-        "bot"
-      );
-    }
-  }
-
-  // Auto-resize textarea
-  function autoResizeTextarea() {
-    inputEl.style.height = 'auto';
-    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
-  }
-
-  // Handle textarea input for auto-resize
-  inputEl.addEventListener('input', autoResizeTextarea);
-
-  // Handle Enter key (Enter to send, Shift+Enter for new line)
-  inputEl.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      formEl.dispatchEvent(new Event('submit'));
-    }
-  });
-
-  // form submit handler
-  formEl.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const text = inputEl.value.trim();
-    if (!text) return;
-
-    // Get references to elements for animation
-    const sendBtn = formEl.querySelector('.send-btn');
-    const inputPill = formEl.querySelector('.input-pill');
-
-    // Add sending animation classes
-    animateClass(sendBtn, 'sending', 150);
-    animateClass(inputPill, 'sending', 150);
-
-    // Clear input immediately for better UX
-    inputEl.value = "";
-    inputEl.style.height = 'auto'; // Reset height after sending
-
-    // Send the message
-    sendMessageToApi(text);
-  });
-
-  // open/close behavior
-  function openPanel(next) {
-    const wasOpen = isOpen;
-    isOpen = !!next;
-    
-    if (!isOpen && wasOpen) {
-      // Add closing animation
-      animateClass(panel, "closing", 300);
-      panel.classList.remove("open");
-      bubble.classList.remove("open");
-    } else if (isOpen) {
-      panel.classList.add("open");
-      bubble.classList.add("open");
-    } else {
-      panel.classList.remove("open");
-      bubble.classList.remove("open");
-    }
-    
-    bubble.setAttribute("aria-expanded", String(isOpen));
-
-    // optional: focus the input when opened
-    if (isOpen) {
-      // microtask so panel is visible before focus()
-      setTimeout(() => {
-        inputEl?.focus();
-      }, 100);
-
-      // fire DOM event so host page can hook analytics
-      window.dispatchEvent(new CustomEvent("yoursaas-chat:open"));
-    } else {
-      window.dispatchEvent(new CustomEvent("yoursaas-chat:close"));
-    }
-  }
-
-  bubble.addEventListener("click", togglePanel);
-  closeBtn.addEventListener("click", closePanel);
-
-  function togglePanel() {
-    // Hide preview popup when opening panel
-    if (!isOpen) hidePreviewPopup();
-    openPanel(!isOpen);
-  }
-  
-  function closePanel() {
-    openPanel(false);
-  }
-  
-  function openNow() {
-    hidePreviewPopup();
-    openPanel(true);
-  }
-
-  // Preview popup logic
-  const previewCloseBtn = previewPopup.querySelector('.preview-close');
-  const previewCtaBtn = previewPopup.querySelector('.preview-cta');
-  
-  function showPreviewPopup() {
-    const previewShown = localStorage.getItem(CONSTANTS.PREVIEW_SHOWN_KEY);
-    if (!previewShown && !isOpen) {
-      setTimeout(() => {
-        if (!isOpen) {
-          previewPopup.classList.add('show');
+        // Fallback if no done event received
+        if (botMessage) {
+          addMessage(botMessage, "bot");
+        } else {
+          addMessage("Thanks, we'll be in touch.", "bot");
         }
-      }, 2000); // Show after 2 seconds
+      } catch (err) {
+        console.error("[Chat] Error sending message:", err.message || err);
+        if (typingNode && typingNode.parentNode) {
+          typingNode.parentNode.removeChild(typingNode);
+        }
+        addMessage(
+          "Sorry, we're having trouble right now. Please call the shop.",
+          "bot"
+        );
+      }
     }
-  }
 
-  function hidePreviewPopup() {
-    animateClass(previewPopup, 'hide', 300);
-    setTimeout(() => {
-      previewPopup.classList.remove('show');
-    }, 300);
-    localStorage.setItem(CONSTANTS.PREVIEW_SHOWN_KEY, 'true');
-  }
-
-  previewCloseBtn.addEventListener('click', () => {
-    hidePreviewPopup();
-  });
-
-  previewCtaBtn.addEventListener('click', () => {
-    hidePreviewPopup();
-    openNow();
-  });
-
-  // Show preview popup on page load
-  showPreviewPopup();
-
-  // Reduce animation if user prefers
-  const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-  if (mq.matches) {
-    bubble.style.transition = "none";
-  }
-
-  // public API on window
-  const api = {
-    __loaded: true,
-    open: openNow,
-    close: closePanel,
-    toggle: togglePanel,
-    // fire custom events / tracking to your backend without user seeing a message
-    track: (eventPayload) => {
-      const trackingUrl = cfg.api.startsWith("http") ? `${cfg.api}/chat/track` : `https://${cfg.api}/chat/track`;
-      fetch(trackingUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          site: cfg.site,
-          event: eventPayload,
-          pageUrl: window.location.href,
-        }),
-      }).catch(() => {});
-    },
-    destroy: () => {
-      observer?.disconnect?.();
-      root?.remove();
-      window.YourSaaSChat = undefined;
-    },
-  };
-  window.YourSaaSChat = api;
-
-  // clean up if merchant removes the node
-  let observer = new MutationObserver(() => {
-    if (!document.documentElement.contains(root)) {
-      observer.disconnect();
-      window.YourSaaSChat = undefined;
+    // Auto-resize textarea
+    function autoResizeTextarea() {
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
     }
-  });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
 
-  // greet message (optional)
-  addMessage("Hi! How can I help?", "bot");
+    // Handle textarea input for auto-resize
+    inputEl.addEventListener('input', autoResizeTextarea);
+
+    // Handle Enter key (Enter to send, Shift+Enter for new line)
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        formEl.dispatchEvent(new Event('submit'));
+      }
+    });
+
+    // form submit handler
+    formEl.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = inputEl.value.trim();
+      if (!text) return;
+
+      // Get references to elements for animation
+      const sendBtn = formEl.querySelector('.send-btn');
+      const inputPill = formEl.querySelector('.input-pill');
+
+      // Add sending animation classes
+      animateClass(sendBtn, 'sending', 150);
+      animateClass(inputPill, 'sending', 150);
+
+      // Clear input immediately for better UX
+      inputEl.value = "";
+      inputEl.style.height = 'auto'; // Reset height after sending
+
+      // Send the message
+      sendMessageToApi(text);
+    });
+
+    // open/close behavior
+    function openPanel(next) {
+      const wasOpen = isOpen;
+      isOpen = !!next;
+
+      if (!isOpen && wasOpen) {
+        // Add closing animation
+        animateClass(panel, "closing", 300);
+        panel.classList.remove("open");
+        bubble.classList.remove("open");
+      } else if (isOpen) {
+        panel.classList.add("open");
+        bubble.classList.add("open");
+      } else {
+        panel.classList.remove("open");
+        bubble.classList.remove("open");
+      }
+
+      bubble.setAttribute("aria-expanded", String(isOpen));
+
+      // optional: focus the input when opened
+      if (isOpen) {
+        // microtask so panel is visible before focus()
+        setTimeout(() => {
+          inputEl?.focus();
+        }, 100);
+
+        // fire DOM event so host page can hook analytics
+        window.dispatchEvent(new CustomEvent("yoursaas-chat:open"));
+      } else {
+        window.dispatchEvent(new CustomEvent("yoursaas-chat:close"));
+      }
+    }
+
+    bubble.addEventListener("click", togglePanel);
+    closeBtn.addEventListener("click", closePanel);
+
+    function togglePanel() {
+      // Hide preview popup when opening panel
+      if (!isOpen) hidePreviewPopup();
+      openPanel(!isOpen);
+    }
+
+    function closePanel() {
+      openPanel(false);
+    }
+
+    function openNow() {
+      hidePreviewPopup();
+      openPanel(true);
+    }
+
+    // Preview popup logic
+    const previewCloseBtn = previewPopup.querySelector('.preview-close');
+    const previewCtaBtn = previewPopup.querySelector('.preview-cta');
+
+    function showPreviewPopup() {
+      const previewShown = localStorage.getItem(CONSTANTS.PREVIEW_SHOWN_KEY);
+      if (!previewShown && !isOpen) {
+        setTimeout(() => {
+          if (!isOpen) {
+            previewPopup.classList.add('show');
+          }
+        }, 2000); // Show after 2 seconds
+      }
+    }
+
+    function hidePreviewPopup() {
+      animateClass(previewPopup, 'hide', 300);
+      setTimeout(() => {
+        previewPopup.classList.remove('show');
+      }, 300);
+      localStorage.setItem(CONSTANTS.PREVIEW_SHOWN_KEY, 'true');
+    }
+
+    previewCloseBtn.addEventListener('click', () => {
+      hidePreviewPopup();
+    });
+
+    previewCtaBtn.addEventListener('click', () => {
+      hidePreviewPopup();
+      openNow();
+    });
+
+    // Show preview popup on page load
+    showPreviewPopup();
+
+    // Reduce animation if user prefers
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mq.matches) {
+      bubble.style.transition = "none";
+    }
+
+    // public API on window
+    const api = {
+      __loaded: true,
+      open: openNow,
+      close: closePanel,
+      toggle: togglePanel,
+      // fire custom events / tracking to your backend without user seeing a message
+      track: (eventPayload) => {
+        const trackingUrl = cfg.api.startsWith("http") ? `${cfg.api}/chat/track` : `https://${cfg.api}/chat/track`;
+        fetch(trackingUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            site: cfg.site,
+            event: eventPayload,
+            pageUrl: window.location.href,
+          }),
+        }).catch(() => {});
+      },
+      destroy: () => {
+        observer?.disconnect?.();
+        root?.remove();
+        window.YourSaaSChat = undefined;
+      },
+    };
+    window.YourSaaSChat = api;
+
+    // clean up if merchant removes the node
+    let observer = new MutationObserver(() => {
+      if (!document.documentElement.contains(root)) {
+        observer.disconnect();
+        window.YourSaaSChat = undefined;
+      }
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+
+    // greet message (optional)
+    addMessage("Hi! How can I help?", "bot");
+  }
+
+  // Call the initialization function
+  initializeChatWidget().catch((err) => {
+    console.error("[Chat] Unexpected error during initialization:", err);
+  });
 })();
