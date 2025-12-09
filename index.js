@@ -64,7 +64,17 @@
       return;
     }
 
-    // Reusable avatar SVG
+    // Meta tag for viewport
+    let meta = document.querySelector('meta[name="viewport"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = "viewport";
+      document.head.appendChild(meta);
+    }
+    // Ensure content includes maximum-scale=1 to prevent zoom on focus
+    if (!meta.content.includes("maximum-scale=1")) {
+      meta.content = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0";
+    }
     const AVATAR_SVG = `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
     <path fill="#fc663d" d="M44.39,44.5H3.61c0-7,3.16-12.74,10.19-12.74H34.2c7,0,10.19,5.7,10.19,12.74Z"/>
     <path fill="#f7cc94" d="M27.82,21.56V33a3.82,3.82,0,0,1-7.64,0V21.56Z"/>
@@ -314,6 +324,14 @@
         width: calc(100vw - 32px);
         left: 16px;
         right: 16px;
+      }
+
+      .bubble.open {
+        display: none;
+      }
+
+      .input-pill textarea {
+        font-size: 16px !important;
       }
     }
     
