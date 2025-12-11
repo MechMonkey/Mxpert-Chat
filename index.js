@@ -22,9 +22,7 @@
 
   // Validate page before rendering chat
   async function validatePageAccess() {
-
     try {
-
       const validationUrl = cfg.api.startsWith("http")
         ? `${cfg.api}/page/check`
         : `https://${cfg.api}/page/check`;
@@ -58,14 +56,51 @@
     }
   }
 
+  // Setup navigation listeners for SPA support
+  function setupNavigationListeners(onNavigate) {
+    let lastUrl = window.location.href;
+
+    const handleNavigation = () => {
+      const currentUrl = window.location.href;
+      if (currentUrl !== lastUrl) {
+        lastUrl = currentUrl;
+        console.log('[Chat] Navigation detected:', currentUrl);
+        onNavigate();
+      }
+    };
+
+    // Intercept History API (pushState and replaceState)
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+
+    history.pushState = function (...args) {
+      originalPushState.apply(this, args);
+      // Use setTimeout to ensure the URL has updated
+      setTimeout(handleNavigation, 0);
+    };
+
+    history.replaceState = function (...args) {
+      originalReplaceState.apply(this, args);
+      setTimeout(handleNavigation, 0);
+    };
+
+    // Listen for popstate (back/forward buttons)
+    window.addEventListener('popstate', handleNavigation);
+
+    // Also listen for hashchange (for hash-based routing)
+    window.addEventListener('hashchange', handleNavigation);
+
+    // Return cleanup function
+    return () => {
+      history.pushState = originalPushState;
+      history.replaceState = originalReplaceState;
+      window.removeEventListener('popstate', handleNavigation);
+      window.removeEventListener('hashchange', handleNavigation);
+    };
+  }
+
   // Initialize chat widget
   async function initializeChatWidget() {
-    const isAllowed = await validatePageAccess();
-    if (!isAllowed) {
-      console.log("[Chat] Chat widget is not allowed on this page");
-      return;
-    }
-
     // Reusable avatar SVG
     const AVATAR_SVG = `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
     <path fill="#fc663d" d="M44.39,44.5H3.61c0-7,3.16-12.74,10.19-12.74H34.2c7,0,10.19,5.7,10.19,12.74Z"/>
@@ -90,7 +125,7 @@
       setTimeout(() => element.classList.remove(className), duration);
     };
 
-    // Root mount point
+    // Root mount point - create regardless of initial validation
     const root = document.createElement("div");
     root.setAttribute("data-yoursaas-chat", "");
     root.style.all = "initial";
@@ -718,6 +753,11 @@
       opacity: 0.6;
       pointer-events: none;
     }
+
+    /* Hidden state for widget */
+    .widget-hidden {
+      display: none !important;
+    }
   `;
     shadow.appendChild(style);
 
@@ -1144,6 +1184,7 @@
     // Preview popup logic
     const previewCloseBtn = previewPopup.querySelector('.preview-close');
     const previewCtaBtn = previewPopup.querySelector('.preview-cta');
+    let previewTimeout = null;
 
     function showPreviewPopup() {
       const previewShown = localStorage.getItem(CONSTANTS.PREVIEW_SHOWN_KEY);
@@ -1157,6 +1198,11 @@
     }
 
     function hidePreviewPopup() {
+      // Clear any pending timeout
+      if (previewTimeout) {
+        clearTimeout(previewTimeout);
+        previewTimeout = null;
+      }
       animateClass(previewPopup, 'hide', 300);
       setTimeout(() => {
         previewPopup.classList.remove('show');
@@ -1173,8 +1219,10 @@
       openNow();
     });
 
-    // Show preview popup on page load
-    showPreviewPopup();
+    // Show preview popup on page load (only if widget is visible)
+    if (initiallyAllowed) {
+      showPreviewPopup();
+    }
 
     // Reduce animation if user prefers
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -1182,12 +1230,28 @@
       bubble.style.transition = "none";
     }
 
+    // clean up if merchant removes the node
+    let observer = new MutationObserver(() => {
+      if (!document.documentElement.contains(root)) {
+        observer.disconnect();
+        if (cleanupNavigationListeners) {
+          cleanupNavigationListeners();
+        }
+        window.YourSaaSChat = undefined;
+      }
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+
     // public API on window
     const api = {
       __loaded: true,
       open: openNow,
       close: closePanel,
       toggle: togglePanel,
+      // Manually trigger re-validation (useful for custom routing scenarios)
+      revalidate: handleNavigationChange,
+      // Check if widget is currently visible
+      isVisible: () => isWidgetVisible,
       // fire custom events / tracking to your backend without user seeing a message
       track: (eventPayload) => {
         const trackingUrl = cfg.api.startsWith("http") ? `${cfg.api}/chat/track` : `https://${cfg.api}/chat/track`;
@@ -1203,20 +1267,14 @@
       },
       destroy: () => {
         observer?.disconnect?.();
+        if (cleanupNavigationListeners) {
+          cleanupNavigationListeners();
+        }
         root?.remove();
         window.YourSaaSChat = undefined;
       },
     };
     window.YourSaaSChat = api;
-
-    // clean up if merchant removes the node
-    let observer = new MutationObserver(() => {
-      if (!document.documentElement.contains(root)) {
-        observer.disconnect();
-        window.YourSaaSChat = undefined;
-      }
-    });
-    observer.observe(document.documentElement, { childList: true, subtree: true });
 
     // greet message (optional)
     addMessage("Hi! How can I help?", "bot");
