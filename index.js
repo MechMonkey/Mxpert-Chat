@@ -99,6 +99,40 @@
     };
   }
 
+  // Track widget visibility state
+  let isWidgetVisible = true;
+  let initiallyAllowed = true;
+  let cleanupNavigationListeners = null;
+
+  // Handle navigation changes and revalidate access
+  async function handleNavigationChange() {
+    console.log('[Chat] Navigation detected, revalidating page access');
+    const isAllowed = await validatePageAccess();
+
+    if (isAllowed !== isWidgetVisible) {
+      isWidgetVisible = isAllowed;
+      console.log('[Chat] Widget visibility changed:', isWidgetVisible);
+
+      // Apply or remove hidden class
+      const root = document.querySelector('[data-yoursaas-chat]');
+      if (root && root.shadowRoot) {
+        const bubble = root.shadowRoot.querySelector('.bubble');
+        const panel = root.shadowRoot.querySelector('.panel');
+        const previewPopup = root.shadowRoot.querySelector('.preview-popup');
+
+        if (isAllowed) {
+          bubble?.classList.remove('widget-hidden');
+          panel?.classList.remove('widget-hidden');
+          previewPopup?.classList.remove('widget-hidden');
+        } else {
+          bubble?.classList.add('widget-hidden');
+          panel?.classList.add('widget-hidden');
+          previewPopup?.classList.add('widget-hidden');
+        }
+      }
+    }
+  }
+
   // Initialize chat widget
   async function initializeChatWidget() {
     // Reusable avatar SVG
@@ -1278,10 +1312,33 @@
 
     // greet message (optional)
     addMessage("Hi! How can I help?", "bot");
+
+    // Initially hide widget elements if not allowed
+    if (!initiallyAllowed) {
+      bubble.classList.add('widget-hidden');
+      panel.classList.add('widget-hidden');
+      previewPopup.classList.add('widget-hidden');
+    }
+  }
+
+  // Validate page access and initialize
+  async function initialize() {
+    // First, validate page access
+    initiallyAllowed = await validatePageAccess();
+    isWidgetVisible = initiallyAllowed;
+
+    console.log('[Chat] Initial validation result:', initiallyAllowed);
+
+    // Initialize the chat widget UI
+    await initializeChatWidget();
+
+    // Set up navigation listeners for SPA support
+    cleanupNavigationListeners = setupNavigationListeners(handleNavigationChange);
+    console.log('[Chat] Navigation listeners set up');
   }
 
   // Call the initialization function
-  initializeChatWidget().catch((err) => {
+  initialize().catch((err) => {
     console.error("[Chat] Unexpected error during initialization:", err);
   });
 })();
