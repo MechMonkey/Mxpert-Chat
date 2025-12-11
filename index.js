@@ -14,7 +14,6 @@
 
   // Constants
   const CONSTANTS = {
-    DISCLAIMER_KEY: "mxpert_disclaimer_agreed",
     PREVIEW_SHOWN_KEY: "mxpert-preview-shown",
     TRANSITION_FAST: "0.15s ease",
     TRANSITION_NORMAL: "0.2s ease",
@@ -41,7 +40,8 @@
 
       if (!response.ok) {
         console.error("[Chat] Page validation failed with status:", response.status);
-        return false;
+        console.log("[Chat] Dev mode: Allowing access despite validation failure");
+        return true;
       }
 
       const result = await response.json();
@@ -51,7 +51,8 @@
       return isAllowed;
     } catch (err) {
       console.error("[Chat] Error during page validation:", err.message || err);
-      return false;
+      console.log("[Chat] Dev mode: Allowing access despite validation error");
+      return true;
     }
   }
 
@@ -330,6 +331,48 @@
       pointer-events: none;
       transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
+
+    @media (max-width: 480px) {
+      .panel {
+        position: fixed;
+        bottom: 0;
+        right: 0;
+        left: 0;
+        top: 0;
+        width: 100vw;
+        height: 100vh; /* Fallback */
+        height: 100dvh;
+        border-radius: 0;
+        transform-origin: bottom right;
+      }
+      
+      .preview-popup {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        right: auto;
+        width: calc(100vw - 32px);
+        max-width: 420px;
+        transform: translate(-50%, 10px) scale(0.95);
+      }
+
+      .bubble.open {
+        display: none;
+      }
+
+      .input-pill textarea {
+        font-size: 16px !important;
+      }
+
+      .preview-popup.show {
+        transform: translate(-50%, 0) scale(1);
+      }
+
+      .preview-popup.hide {
+        transform: translate(-50%, 10px) scale(0.95);
+      }
+    }
+    
     .panel.open {
       opacity: 1;
       transform: scale(1) translateY(0);
@@ -464,76 +507,6 @@
 
     .footer a:hover .logo-svg {
       opacity: 1;
-    }
-
-    /* Disclaimer Modal */
-    .disclaimer-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      z-index: 1000;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
-    }
-
-    .disclaimer-overlay.show {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .disclaimer-modal {
-      background: ${cfg.theme === "dark" ? "#1a1f35" : "#ffffff"};
-      border-radius: 12px;
-      padding: 24px;
-      max-width: 380px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-      text-align: center;
-    }
-
-    .disclaimer-content {
-      font-size: 14px;
-      line-height: 1.6;
-      color: ${cfg.theme === "dark" ? "#e5e7eb" : "#4b5563"};
-      margin-bottom: 20px;
-    }
-
-    .disclaimer-content a {
-      color: ${cfg.primary};
-      text-decoration: underline;
-    }
-
-    .disclaimer-content a:hover {
-      opacity: 0.8;
-    }
-
-    .disclaimer-button {
-      background: ${cfg.primary};
-      color: white;
-      border: none;
-      border-radius: 8px;
-      padding: 12px 32px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-      box-shadow: 0 2px 8px ${cfg.primary}40;
-    }
-
-    .disclaimer-button:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px ${cfg.primary}50;
-    }
-
-    .disclaimer-button:active {
-      transform: translateY(0);
     }
 
     .msgs {
@@ -861,14 +834,6 @@
         </a>
       </div>
     </div>
-    <div class="disclaimer-overlay" id="disclaimer-overlay">
-      <div class="disclaimer-modal">
-        <div class="disclaimer-content">
-          We use cookies to enhance your experience and maintain chat history. For quality assurance, conversations may be monitored and recorded (see our <a href="https://mxpert.ai/privacy-policy/" target="_blank" rel="noopener noreferrer">Privacy Policy</a>).
-        </div>
-        <button class="disclaimer-button" id="disclaimer-agree">I Agree</button>
-      </div>
-    </div>
   `;
 
     // Preview popup
@@ -899,75 +864,20 @@
     shadow.appendChild(previewPopup);
     shadow.appendChild(bubble);
 
-    //
-    // Behavior
-    //
-    const msgsEl = panel.querySelector("#ys-msgs");
-    const formEl = panel.querySelector("#ys-form");
-    const inputEl = panel.querySelector("#ys-input");
-    const closeBtn = panel.querySelector(".close-btn");
-    const disclaimerOverlay = panel.querySelector("#disclaimer-overlay");
-    const disclaimerAgreeBtn = panel.querySelector("#disclaimer-agree");
+  //
+  // Behavior
+  //
+  const msgsEl = panel.querySelector("#ys-msgs");
+  const formEl = panel.querySelector("#ys-form");
+  const inputEl = panel.querySelector("#ys-input");
+  const closeBtn = panel.querySelector(".close-btn");
 
-    let isOpen = false;
-    let isWidgetVisible = false; // Track widget visibility state
-    let conversationId = null; // Track conversation ID across turns
-    let cleanupNavigationListeners = null; // Store cleanup function
-
-    // Function to show/hide the widget
-    function setWidgetVisibility(visible) {
-      isWidgetVisible = visible;
-      if (visible) {
-        bubble.classList.remove('widget-hidden');
-        panel.classList.remove('widget-hidden');
-        previewPopup.classList.remove('widget-hidden');
-        console.log('[Chat] Widget is now visible');
-      } else {
-        bubble.classList.add('widget-hidden');
-        panel.classList.add('widget-hidden');
-        previewPopup.classList.add('widget-hidden');
-        // Close panel if it was open
-        if (isOpen) {
-          openPanel(false);
-        }
-        // Hide preview popup
-        hidePreviewPopup();
-        console.log('[Chat] Widget is now hidden');
-      }
-    }
-
-    // Handle navigation changes
-    async function handleNavigationChange() {
-      console.log('[Chat] Re-validating page access after navigation...');
-      const isAllowed = await validatePageAccess();
-      setWidgetVisibility(isAllowed);
-    }
-
-    // Initial validation
-    const initiallyAllowed = await validatePageAccess();
-    setWidgetVisibility(initiallyAllowed);
-
-    // Setup navigation listeners
-    cleanupNavigationListeners = setupNavigationListeners(handleNavigationChange);
-
-    // Handle disclaimer agreement
-    disclaimerAgreeBtn.addEventListener("click", () => {
-      localStorage.setItem(CONSTANTS.DISCLAIMER_KEY, "true");
-      disclaimerOverlay.classList.remove("show");
-    });
-
-    // Show disclaimer on first chat open if not agreed
-    function checkAndShowDisclaimer() {
-      if (!localStorage.getItem(CONSTANTS.DISCLAIMER_KEY)) {
-        setTimeout(() => {
-          disclaimerOverlay.classList.add("show");
-        }, 500);
-      }
-    }
-
-    function scrollMsgsToBottom() {
-      msgsEl.scrollTop = msgsEl.scrollHeight;
-    }
+  let isOpen = false;
+  let conversationId = null; // Track conversation ID across turns
+  
+  function scrollMsgsToBottom() {
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
 
     // Simple markdown parser - optimized for fewer passes
     function parseMarkdown(text) {
@@ -1241,9 +1151,6 @@
 
       // optional: focus the input when opened
       if (isOpen) {
-        // Check and show disclaimer on first open
-        checkAndShowDisclaimer();
-
         // microtask so panel is visible before focus()
         setTimeout(() => {
           inputEl?.focus();
@@ -1281,9 +1188,9 @@
 
     function showPreviewPopup() {
       const previewShown = localStorage.getItem(CONSTANTS.PREVIEW_SHOWN_KEY);
-      if (!previewShown && !isOpen && isWidgetVisible) {
-        previewTimeout = setTimeout(() => {
-          if (isWidgetVisible) { // Double-check visibility before showing
+      if (!previewShown && !isOpen) {
+        setTimeout(() => {
+          if (!isOpen) {
             previewPopup.classList.add('show');
           }
         }, 2000); // Show after 2 seconds
