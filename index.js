@@ -1,7 +1,7 @@
 (() => {
   // Prevent multiple loads
   if (window.YourSaaSChat?.__loaded) return;
-
+  console.log("Chat v0.1.0")
   const SCRIPT = document.currentScript;
   const cfg = {
     site: SCRIPT?.dataset.site || SCRIPT?.getAttribute("site") || "dev",
