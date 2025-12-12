@@ -56,80 +56,99 @@
     }
   }
 
-  // Setup navigation listeners for SPA support
-  function setupNavigationListeners(onNavigate) {
-    let lastUrl = window.location.href;
+function setupNavigationListeners(onNavigate) {
+  let lastUrl = window.location.href;
 
-    const handleNavigation = () => {
-      const currentUrl = window.location.href;
-      if (currentUrl !== lastUrl) {
-        lastUrl = currentUrl;
-        console.log('[Chat] Navigation detected:', currentUrl);
-        onNavigate();
-      }
-    };
+  const handleNavigation = () => {
+    const currentUrl = window.location.href;
+    if (currentUrl !== lastUrl) {
+      lastUrl = currentUrl;
+      console.log('[Chat] Navigation detected:', currentUrl);
+      onNavigate();
+    }
+  };
 
-    // Intercept History API (pushState and replaceState)
-    const originalPushState = history.pushState;
-    const originalReplaceState = history.replaceState;
+  // History monkey patch (helps for routers that *do* use it)
+  const originalPushState = history.pushState;
+  const originalReplaceState = history.replaceState;
 
-    history.pushState = function (...args) {
-      originalPushState.apply(this, args);
-      // Use setTimeout to ensure the URL has updated
-      setTimeout(handleNavigation, 0);
-    };
+  history.pushState = function (...args) {
+    originalPushState.apply(this, args);
+    setTimeout(handleNavigation, 0);
+  };
 
-    history.replaceState = function (...args) {
-      originalReplaceState.apply(this, args);
-      setTimeout(handleNavigation, 0);
-    };
+  history.replaceState = function (...args) {
+    originalReplaceState.apply(this, args);
+    setTimeout(handleNavigation, 0);
+  };
 
-    // Listen for popstate (back/forward buttons)
-    window.addEventListener('popstate', handleNavigation);
+  window.addEventListener('popstate', handleNavigation);
+  window.addEventListener('hashchange', handleNavigation);
 
-    // Also listen for hashchange (for hash-based routing)
-    window.addEventListener('hashchange', handleNavigation);
+  // 🔴 Key addition: a polling fallback for frameworks like Next
+  const intervalId = window.setInterval(handleNavigation, 500);
 
-    // Return cleanup function
-    return () => {
-      history.pushState = originalPushState;
-      history.replaceState = originalReplaceState;
-      window.removeEventListener('popstate', handleNavigation);
-      window.removeEventListener('hashchange', handleNavigation);
-    };
-  }
+  return () => {
+    history.pushState = originalPushState;
+    history.replaceState = originalReplaceState;
+    window.removeEventListener('popstate', handleNavigation);
+    window.removeEventListener('hashchange', handleNavigation);
+    window.clearInterval(intervalId);
+  };
+}
+
 
   // Track widget visibility state
   let isWidgetVisible = true;
   let initiallyAllowed = true;
   let cleanupNavigationListeners = null;
+  let isValidating = false;
+  let chatPanelIsOpen = false; // Track panel state across scopes
 
   // Handle navigation changes and revalidate access
   async function handleNavigationChange() {
+    // Prevent concurrent validations (important for fast navigation)
+    if (isValidating) {
+      console.log('[Chat] Already validating, skipping...');
+      return;
+    }
+
+    isValidating = true;
     console.log('[Chat] Navigation detected, revalidating page access');
-    const isAllowed = await validatePageAccess();
 
-    if (isAllowed !== isWidgetVisible) {
-      isWidgetVisible = isAllowed;
-      console.log('[Chat] Widget visibility changed:', isWidgetVisible);
+    try {
+      const isAllowed = await validatePageAccess();
 
-      // Apply or remove hidden class
-      const root = document.querySelector('[data-yoursaas-chat]');
-      if (root && root.shadowRoot) {
-        const bubble = root.shadowRoot.querySelector('.bubble');
-        const panel = root.shadowRoot.querySelector('.panel');
-        const previewPopup = root.shadowRoot.querySelector('.preview-popup');
+      if (isAllowed !== isWidgetVisible) {
+        isWidgetVisible = isAllowed;
+        console.log('[Chat] Widget visibility changed:', isWidgetVisible);
 
-        if (isAllowed) {
-          bubble?.classList.remove('widget-hidden');
-          panel?.classList.remove('widget-hidden');
-          previewPopup?.classList.remove('widget-hidden');
-        } else {
-          bubble?.classList.add('widget-hidden');
-          panel?.classList.add('widget-hidden');
-          previewPopup?.classList.add('widget-hidden');
+        // Apply or remove hidden class
+        const root = document.querySelector('[data-yoursaas-chat]');
+        if (root && root.shadowRoot) {
+          const bubble = root.shadowRoot.querySelector('.bubble');
+          const panel = root.shadowRoot.querySelector('.panel');
+          const previewPopup = root.shadowRoot.querySelector('.preview-popup');
+
+          if (isAllowed) {
+            bubble?.classList.remove('widget-hidden');
+            panel?.classList.remove('widget-hidden');
+            previewPopup?.classList.remove('widget-hidden');
+          } else {
+            bubble?.classList.add('widget-hidden');
+            panel?.classList.add('widget-hidden');
+            previewPopup?.classList.add('widget-hidden');
+
+            // Auto-close chat if it's open and page is no longer allowed
+            if (chatPanelIsOpen && window.YourSaaSChat?.close) {
+              console.log('[Chat] Auto-closing chat - page no longer allowed');
+              window.YourSaaSChat.close();
+            }
+          }
         }
       }
+    } finally {
+      isValidating = false;
     }
   }
 
@@ -1167,6 +1186,7 @@
     function openPanel(next) {
       const wasOpen = isOpen;
       isOpen = !!next;
+      chatPanelIsOpen = isOpen; // Update global state for navigation handler
 
       if (!isOpen && wasOpen) {
         // Add closing animation
