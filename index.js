@@ -22,17 +22,22 @@
 
   // Validate page before rendering chat
   async function validatePageAccess() {
+    const currentUrl = window.location.href;
+    console.log("[Chat] Validating page access for URL:", currentUrl);
+
     try {
       const validationUrl = cfg.api.startsWith("http")
         ? `${cfg.api}/page/check`
         : `https://${cfg.api}/page/check`;
+
+      console.log("[Chat] Sending validation request to:", validationUrl);
 
       const response = await fetch(validationUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           publicId: cfg.publicId,
-          reqOrigin: window.location.href,
+          reqOrigin: currentUrl,
         }),
       });
 
@@ -40,30 +45,31 @@
 
       if (!response.ok) {
         console.error("[Chat] Page validation failed with status:", response.status);
-        console.log("[Chat] Dev mode: Allowing access despite validation failure");
-        return true;
+        console.log("[Chat] Hiding widget - backend returned error status");
+        return false;
       }
 
       const result = await response.json();
       console.log("[Chat] Page validation result:", result);
       const isAllowed = result.content === true || result?.success === true;
-      console.log("[Chat] Is page allowed?", isAllowed);
+      console.log("[Chat] Is page allowed?", isAllowed, "for URL:", currentUrl);
       return isAllowed;
     } catch (err) {
       console.error("[Chat] Error during page validation:", err.message || err);
-      console.log("[Chat] Dev mode: Allowing access despite validation error");
-      return true;
+      console.log("[Chat] Hiding widget - unable to contact backend");
+      return false;
     }
   }
 
 function setupNavigationListeners(onNavigate) {
   let lastUrl = window.location.href;
+  console.log('[Chat] Navigation listeners initialized. Starting URL:', lastUrl);
 
   const handleNavigation = () => {
     const currentUrl = window.location.href;
     if (currentUrl !== lastUrl) {
+      console.log('[Chat] URL changed from:', lastUrl, 'to:', currentUrl);
       lastUrl = currentUrl;
-      console.log('[Chat] Navigation detected:', currentUrl);
       onNavigate();
     }
   };
@@ -73,20 +79,30 @@ function setupNavigationListeners(onNavigate) {
   const originalReplaceState = history.replaceState;
 
   history.pushState = function (...args) {
+    console.log('[Chat] history.pushState called with:', args[2]);
     originalPushState.apply(this, args);
     setTimeout(handleNavigation, 0);
   };
 
   history.replaceState = function (...args) {
+    console.log('[Chat] history.replaceState called with:', args[2]);
     originalReplaceState.apply(this, args);
     setTimeout(handleNavigation, 0);
   };
 
-  window.addEventListener('popstate', handleNavigation);
-  window.addEventListener('hashchange', handleNavigation);
+  window.addEventListener('popstate', () => {
+    console.log('[Chat] popstate event fired');
+    handleNavigation();
+  });
+
+  window.addEventListener('hashchange', () => {
+    console.log('[Chat] hashchange event fired');
+    handleNavigation();
+  });
 
   // 🔴 Key addition: a polling fallback for frameworks like Next
   const intervalId = window.setInterval(handleNavigation, 500);
+  console.log('[Chat] Navigation polling started (every 500ms)');
 
   return () => {
     history.pushState = originalPushState;
@@ -94,6 +110,7 @@ function setupNavigationListeners(onNavigate) {
     window.removeEventListener('popstate', handleNavigation);
     window.removeEventListener('hashchange', handleNavigation);
     window.clearInterval(intervalId);
+    console.log('[Chat] Navigation listeners cleaned up');
   };
 }
 
@@ -103,25 +120,35 @@ function setupNavigationListeners(onNavigate) {
   let initiallyAllowed = true;
   let cleanupNavigationListeners = null;
   let isValidating = false;
+  let pendingRevalidation = false; // Track if we need to revalidate after current validation
   let chatPanelIsOpen = false; // Track panel state across scopes
 
   // Handle navigation changes and revalidate access
   async function handleNavigationChange() {
-    // Prevent concurrent validations (important for fast navigation)
+    // If already validating, mark that we need to revalidate after this one completes
     if (isValidating) {
-      console.log('[Chat] Already validating, skipping...');
+      console.log('[Chat] Already validating, marking for revalidation after completion');
+      pendingRevalidation = true;
       return;
     }
 
     isValidating = true;
-    console.log('[Chat] Navigation detected, revalidating page access');
+    const currentUrl = window.location.href;
+    console.log('[Chat] Navigation detected, revalidating page access for:', currentUrl);
 
     try {
       const isAllowed = await validatePageAccess();
+      console.log('[Chat] Validation complete. isAllowed:', isAllowed, 'isWidgetVisible:', isWidgetVisible);
+
+      // Check if URL changed during validation - if so, we need to revalidate
+      if (window.location.href !== currentUrl) {
+        console.log('[Chat] URL changed during validation (from', currentUrl, 'to', window.location.href, '), will revalidate');
+        pendingRevalidation = true;
+      }
 
       if (isAllowed !== isWidgetVisible) {
         isWidgetVisible = isAllowed;
-        console.log('[Chat] Widget visibility changed:', isWidgetVisible);
+        console.log('[Chat] Widget visibility changed to:', isWidgetVisible);
 
         // Apply or remove hidden class
         const root = document.querySelector('[data-yoursaas-chat]');
@@ -131,10 +158,12 @@ function setupNavigationListeners(onNavigate) {
           const previewPopup = root.shadowRoot.querySelector('.preview-popup');
 
           if (isAllowed) {
+            console.log('[Chat] Showing widget elements');
             bubble?.classList.remove('widget-hidden');
             panel?.classList.remove('widget-hidden');
             previewPopup?.classList.remove('widget-hidden');
           } else {
+            console.log('[Chat] Hiding widget elements');
             bubble?.classList.add('widget-hidden');
             panel?.classList.add('widget-hidden');
             previewPopup?.classList.add('widget-hidden');
@@ -145,10 +174,24 @@ function setupNavigationListeners(onNavigate) {
               window.YourSaaSChat.close();
             }
           }
+        } else {
+          console.warn('[Chat] Could not find root element or shadow DOM');
         }
+      } else {
+        console.log('[Chat] Widget visibility unchanged (staying', isWidgetVisible, ')');
       }
+    } catch (err) {
+      console.error('[Chat] Error during navigation revalidation:', err);
     } finally {
       isValidating = false;
+
+      // If a navigation happened during validation, trigger another validation
+      if (pendingRevalidation) {
+        console.log('[Chat] Pending revalidation detected, triggering now');
+        pendingRevalidation = false;
+        // Use setTimeout to avoid potential stack overflow with rapid navigations
+        setTimeout(() => handleNavigationChange(), 0);
+      }
     }
   }
 
