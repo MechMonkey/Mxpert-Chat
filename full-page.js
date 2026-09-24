@@ -20,12 +20,12 @@
   var BASE = "https://cdn.jsdelivr.net/gh/MechMonkey/Mxpert-Chat@staging/";
   var ASSETS = {
   "index": {
-    "file": "widget/index.8fd9571b4442.js",
-    "integrity": "sha384-Y64UiqqR5FWM/Zun7TAiLKR8ExXkIpfK+c54KwOPjPsLcC8tY+CzciUNA4g4uhX3"
+    "file": "widget/index.d36895d27675.js",
+    "integrity": "sha384-eAUEWlHuRBjBBO3RWHbPmGzBsBquwdojgh7JZPaKvvHEuoGnXFq3irQJwpTfuv7i"
   },
   "full-page": {
-    "file": "widget/full-page.f7c563d12862.js",
-    "integrity": "sha384-bLbVrd51Zi14i8D6TNgdBE6IALayUYE7ZbuhrO1o5nI/U3B8lbNS+TAnwIPRBdoD"
+    "file": "widget/full-page.365b516ce994.js",
+    "integrity": "sha384-M68M44GlQ36VLtFZpAny6eT+5yxFPo52y9XBet3rLdeJgBAUeVuTZ+JkjmEc2YBZ"
   }
 };
   // ---- END generated release manifest ----
