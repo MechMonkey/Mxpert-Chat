@@ -20,12 +20,12 @@
   var BASE = "https://cdn.jsdelivr.net/gh/MechMonkey/Mxpert-Chat@latest/";
   var ASSETS = {
   "index": {
-    "file": "widget/index.6367083b57d2.js",
-    "integrity": "sha384-zbAGa6EK/i4fdIVxQaIhvnPkChW3zzivWZalqb/yAAp0kpYcfbx45lvvjs4bN06g"
+    "file": "widget/index.d19561257508.js",
+    "integrity": "sha384-Lgw1/D7zgI4aAmJtuRT5r6mBJ3P3k7usWOEU7J0PnU3qXjM/zUPlD3viC0vtkRDw"
   },
   "full-page": {
-    "file": "widget/full-page.acc02af67f11.js",
-    "integrity": "sha384-wE6Igi+7ov899Dn398zhi5kbi4Aqfi9AI+/x3ixEzPkNA/oG3+9GqrMJNzSqooak"
+    "file": "widget/full-page.a2d362b08827.js",
+    "integrity": "sha384-3hrrw/kT/b1LTjgOT3cVAZ3GoV8qWSmxGYqx4aR4y7xYjH9hpWvRrY+/pSVQzw1y"
   }
 };
   // ---- END generated release manifest ----
